@@ -14,14 +14,14 @@ What the action can reach, how it handles untrusted input, and what stays your j
 |---|---|
 | Reads | The git repository in the working directory, the event payload file, and its own inputs |
 | Writes | The step's outputs and its log |
-| Runs | `git`, without a shell, for five read-only commands: `rev-parse`, `rev-list`, `merge-base`, `hash-object`, `diff` |
-| Network | None. There is no fetch, no API call, and no token input |
+| Runs | `git`, without a shell, for five read-only commands: `rev-parse`, `rev-list`, `merge-base`, `hash-object`, `diff`. The executable is taken from an absolute `PATH` entry, never from the checkout |
+| Network | None. There is no fetch, no API call, and no token input. Git's own on-demand fetching in partial clones is switched off |
 
 All of the git access is in `src/git.ts`, and the only writes are in `src/main.ts`.
 
 The job needs `contents: read` for the checkout step and nothing for this action. It works with `persist-credentials: false` on the checkout, since it never talks to the remote.
 
-It never executes a file from the checkout. `git diff` runs with `--no-ext-diff`, so a diff driver configured in the repository isn't invoked.
+It never executes a file from the checkout. `git diff` runs with `--no-ext-diff`, so a diff driver configured in the repository isn't invoked. On Windows a bare `git` would be looked up in the working directory first, where a pull request could place a `git.exe`, so the action resolves git from `PATH` itself.
 
 ## Untrusted input
 
@@ -33,6 +33,7 @@ On a pull request, file names are chosen by the author of the pull request. Git 
 | The outputs file | A name containing the delimiter ends the value early and sets other outputs | Uses a delimiter that is random per run |
 | A list output | A name with spaces or shell metacharacters changes meaning downstream | `safe_output` backslash-escapes them in separated lists. JSON output is left exact for a parser |
 | A glob pattern | A name built to nearly match a pattern such as `*.*.*.*` makes a backtracking matcher take minutes | Matches in time bounded by path length × pattern length |
+| Any output | A name that isn't valid UTF-8 can't be written faithfully, and two such names can collapse into one | Fails the step and says to rename the file |
 | An error message | A newline starts a second workflow command | Encodes the message as command data |
 
 The other inputs come from the workflow, but a workflow can pass on something it didn't write, such as a `workflow_dispatch` input:

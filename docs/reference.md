@@ -81,6 +81,8 @@ The action fails when:
 - The working directory isn't a git repository
 - A commit it needs isn't in the checkout (see [the fetch-depth table](how-to.md#fix-is-not-available-in-this-checkout))
 - Base and head are the same commit and `skip_same_sha` is off
+- A changed file name isn't valid UTF-8
+- The checkout is a partial clone (`filter:` on the checkout step) and the diff needs file contents that weren't downloaded
 
 ## Glob dialect
 

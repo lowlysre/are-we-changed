@@ -89,6 +89,7 @@ describe("parseGroups: rejections", () => {
     ["double-quote escape", 'a:\n  - "x\\ty"', /line 2: escape sequences are not supported/],
     ["empty quoted pattern", "a:\n  - ''", /line 2: empty pattern/],
     ["tab indentation", "a:\n\t- x", /line 2: tabs are not supported/],
+    ["no-break space", "a:\n  - src/a\u00A0#b.ts", /line 2: whitespace other than a space/],
     ["document marker", "---\na:\n  - x", /line 1: expected `group:`/],
     ["group without patterns", "a:\nb:\n  - x", /group "a" has no patterns/],
     ["comments only", "# nothing", /no groups found/],

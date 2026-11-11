@@ -1,5 +1,5 @@
 /**
- * what-changed: change classification and output formatting
+ * what-changed-files: change classification and output formatting
  *
  * Pure functions with no side effects: they turn `git diff --name-status -z`
  * text into the action's outputs. Git and the Actions runtime live elsewhere.

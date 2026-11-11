@@ -1,5 +1,5 @@
 /**
- * what-changed: `files_yaml` parsing
+ * what-changed-files: `files_yaml` parsing
  *
  * Accepts a strict YAML subset:
  *
@@ -122,6 +122,8 @@ export function parseGroups(text: string): Groups {
     const line = raw.trimEnd();
     if (line.trim() === "" || line.trim().startsWith("#")) continue;
     if (line.includes("\t")) fail("tabs are not supported");
+    // JavaScript's \s is wider than YAML's: a no-break space before `#` would start a comment here only.
+    if (/[^\S ]/.test(line)) fail("whitespace other than a space is not supported");
     const item = /^( *)-\s+(.*)$/.exec(line);
     if (item) {
       if (!current) fail("list item before any group");

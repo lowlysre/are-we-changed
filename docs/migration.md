@@ -19,7 +19,7 @@ The [README](../README.md#can-i-migrate-cleanly-from-tj-actionschanged-files) ha
 
 These apply even when every input you set is supported.
 
-| Topic | tj-actions/changed-files | what-changed |
+| Topic | tj-actions/changed-files | what-changed-files |
 |-------|--------------------------|--------------|
 | Missing history | Fetches more, up to `fetch_missing_history_max_retries` times | Fails and names the `fetch-depth` to set |
 | Push of several commits on a shallow clone | Warns and compares the last commit with its parent | Fails; needs `fetch-depth: 0` to reach `github.event.before` |
@@ -33,6 +33,8 @@ These apply even when every input you set is supported.
 | `safe_output` with `json` | Escapes inside the JSON text, which can make it invalid | Leaves JSON output alone |
 | Copies, type changes, unmerged files | Separate outputs | Type changes count as modified. Copies aren't detected |
 | Working directory | `path` input | Always the step's working directory |
+| Partial clones (`filter:` on the checkout step) | Git fetches missing file contents on demand | Fails when the diff needs them |
+| File names that aren't valid UTF-8 | Reported with replacement characters | Fails the step |
 
 ## Inputs without an equivalent
 

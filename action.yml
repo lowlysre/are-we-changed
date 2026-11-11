@@ -1,5 +1,3 @@
-# The Marketplace name can't match a GitHub account, and an organization named
-# What-Changed exists, so this differs from the repository name.
 name: what-changed-files
 description: Report the files changed between two commits. Zero dependencies, git only, no build step.
 author: lowlysre

@@ -1,5 +1,5 @@
 /**
- * what-changed: action entry point
+ * what-changed-files: action entry point
  *
  * The only module with side effects: writes outputs to GITHUB_OUTPUT, echoes
  * them to the log and reports failures as workflow commands. Runs as shipped;

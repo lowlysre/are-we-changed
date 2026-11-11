@@ -7,12 +7,13 @@ import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { delimiter, dirname, join } from "node:path";
 import { describe, it } from "node:test";
 import type { TestContext } from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { run } from "../src/index.ts";
+import { findGit } from "../src/git.ts";
 import type { EventPayload } from "../src/git.ts";
 
 const MAIN = fileURLToPath(new URL("../src/main.ts", import.meta.url));
@@ -21,7 +22,7 @@ type Inputs = Record<string, string | boolean | number>;
 type Repo = ReturnType<typeof makeRepo>;
 
 function makeRepo(t: TestContext) {
-  const root = mkdtempSync(join(tmpdir(), "what-changed-"));
+  const root = mkdtempSync(join(tmpdir(), "what-changed-files-"));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const dir = join(root, "repo");
   mkdirSync(dir);
@@ -270,6 +271,57 @@ describe("explicit base_sha and sha", () => {
       () => repo.outputs({ base_sha: "--output=owned" }),
       /base_sha "--output=owned" is not available/,
     );
+  });
+});
+
+describe("hostile repository state", () => {
+  it("fails on a file name that is not valid UTF-8", (t) => {
+    const repo = makeRepo(t);
+    repo.write("a.txt");
+    const base = repo.commit("base");
+    const raw = (args: string[], input: Buffer | string) =>
+      execFileSync("git", args, { cwd: repo.dir, input }).toString().trim();
+    const blob = raw(["hash-object", "-w", "--stdin"], "content\n");
+    const entry = Buffer.concat([
+      Buffer.from(`100644 blob ${blob}\t`),
+      Buffer.from([0xff]),
+      Buffer.from(".txt\n"),
+    ]);
+    const tree = raw(["mktree"], entry);
+    const sha = raw(["commit-tree", tree, "-p", base, "-m", "bad name"], "");
+    assert.throws(() => repo.outputs({ base_sha: base, sha }), /not valid UTF-8/);
+  });
+
+  it("fails in a partial clone instead of fetching missing file contents", (t) => {
+    const repo = makeRepo(t);
+    repo.git("config", "uploadpack.allowFilter", "true");
+    repo.write("old.txt", "enough shared content\nto count as a rename\nwhen the file moves\n");
+    repo.commit("base");
+    repo.git("mv", "old.txt", "new.txt");
+    repo.write(
+      "new.txt",
+      "enough shared content\nto count as a rename\nwhen the file moves\nplus\n",
+    );
+    repo.commit("rename and edit");
+    const partial = join(repo.root, "partial");
+    const source = pathToFileURL(repo.dir).href;
+    execFileSync("git", [
+      "clone",
+      "--quiet",
+      "--filter=blob:none",
+      "--no-checkout",
+      source,
+      partial,
+    ]);
+    assert.throws(() => run({}, partial), /partial clone.*never fetches/);
+  });
+
+  it("finds git only in absolute PATH entries", (t) => {
+    const repo = makeRepo(t);
+    const name = process.platform === "win32" ? "git.exe" : "git";
+    writeFileSync(join(repo.root, name), "");
+    assert.equal(findGit([".", repo.root].join(delimiter)), join(repo.root, name));
+    assert.throws(() => findGit("."), /git was not found on PATH/);
   });
 });
 

@@ -1,5 +1,5 @@
 /**
- * what-changed: orchestration
+ * what-changed-files: orchestration
  *
  * Reads inputs from an environment map, asks git for the diff and returns the
  * outputs. It reads the event file and runs git but writes nothing; main.ts

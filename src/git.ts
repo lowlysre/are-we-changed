@@ -1,5 +1,5 @@
 /**
- * what-changed: git access
+ * what-changed-files: git access
  *
  * Chooses the two commits to compare and diffs them. Never fetches: missing
  * history is an error that says how to fix the checkout. A silent fallback to
@@ -7,6 +7,8 @@
  */
 
 import { execFileSync } from "node:child_process";
+import { statSync } from "node:fs";
+import { delimiter, isAbsolute, join } from "node:path";
 
 /** The two ways this module runs git, bound to one repository. */
 export interface Git {
@@ -49,26 +51,69 @@ const HISTORY_HINT =
   "Set `fetch-depth: 0` on actions/checkout (`fetch-depth: 2` is enough for a push of one commit and for pull request merge commits).";
 
 /**
+ * Finds the git executable on `PATH` and returns its absolute path.
+ *
+ * Spawning the bare name `git` on Windows searches the working directory
+ * before `PATH`, and the working directory is the checkout: a pull request
+ * could add a `git.exe` there and have it run. Only absolute `PATH` entries
+ * are considered, so `.` on the path cannot bring the checkout back in.
+ *
+ * @throws When no git executable is on `PATH`.
+ */
+export function findGit(
+  pathVariable: string = process.env.PATH ?? "",
+  platform: string = process.platform,
+): string {
+  const name = platform === "win32" ? "git.exe" : "git";
+  for (const directory of pathVariable.split(delimiter)) {
+    if (!isAbsolute(directory)) continue;
+    const candidate = join(directory, name);
+    if (statSync(candidate, { throwIfNoEntry: false })?.isFile()) return candidate;
+  }
+  throw new Error("git was not found on PATH.");
+}
+
+const utf8 = new TextDecoder("utf-8", { fatal: true });
+
+/**
  * Binds git to the repository at `cwd`.
  *
- * `safe.directory` is set per call because container jobs run as a different
- * user than the one that owns the checkout, which git otherwise refuses.
- * `core.quotepath=false` keeps non-ASCII paths as UTF-8 instead of octal escapes.
+ * - `safe.directory` is set per call because container jobs run as a different
+ *   user than the one that owns the checkout, which git otherwise refuses.
+ * - `core.quotepath=false` keeps non-ASCII paths as UTF-8 instead of octal escapes.
+ * - `GIT_NO_LAZY_FETCH` stops git from fetching missing objects in a partial
+ *   clone on its own, which would break the never-fetches guarantee.
+ *
+ * Output is decoded strictly. A file name that is not valid UTF-8 would
+ * otherwise be published with replacement characters, naming a path that does
+ * not exist and merging distinct names.
+ *
+ * @throws From `git`, when the command fails or its output is not valid UTF-8.
  */
 export function createGit(cwd: string): Git {
+  const executable = findGit();
   const prefix = [
     "-c",
     `safe.directory=${cwd.replaceAll("\\", "/")}`,
     "-c",
     "core.quotepath=false",
   ];
-  const git = (...args: string[]): string =>
-    execFileSync("git", [...prefix, ...args], {
+  const env = { ...process.env, GIT_NO_LAZY_FETCH: "1", GIT_TERMINAL_PROMPT: "0" };
+  const git = (...args: string[]): string => {
+    const output = execFileSync(executable, [...prefix, ...args], {
       cwd,
-      encoding: "utf8",
+      env,
       maxBuffer: 1024 ** 3,
       stdio: ["ignore", "pipe", "pipe"],
     });
+    try {
+      return utf8.decode(output);
+    } catch {
+      throw new Error(
+        "A changed file name is not valid UTF-8, so it cannot be reported accurately. Rename the file.",
+      );
+    }
+  };
   const tryGit = (...args: string[]): string | null => {
     try {
       return git(...args).trim();
@@ -174,17 +219,28 @@ export function resolveRange(
  * `-z` is what makes paths with spaces, quotes or newlines unambiguous. `-M`
  * and `--no-ext-diff` are passed explicitly so the result does not depend on
  * the runner's git config.
+ *
+ * @throws When git fails. In a partial clone, rename detection can need file
+ *   contents that were never downloaded; that case gets its own message.
  */
 export function diffNameStatus({ git }: Git, base: string, head: string): string {
-  return git(
-    "diff",
-    "--name-status",
-    "-z",
-    "-M",
-    "--no-ext-diff",
-    "--ignore-submodules=all",
-    base,
-    head,
-    "--",
-  );
+  try {
+    return git(
+      "diff",
+      "--name-status",
+      "-z",
+      "-M",
+      "--no-ext-diff",
+      "--ignore-submodules=all",
+      base,
+      head,
+      "--",
+    );
+  } catch (error) {
+    const stderr = String((error as { stderr?: unknown }).stderr ?? "");
+    if (!/promisor|lazy fetch/i.test(stderr)) throw error;
+    throw new Error(
+      "git diff needs file contents this partial clone does not have, and this action never fetches. Remove `filter` from actions/checkout.",
+    );
+  }
 }

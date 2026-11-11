@@ -1,5 +1,5 @@
 {
-  "name": "what-changed",
+  "name": "what-changed-files",
   "version": "0.1.0",
   "description": "Zero-dependency GitHub Action that reports the files changed between two commits.",
   "private": true,
