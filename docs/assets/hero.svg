@@ -1,57 +1,60 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 525" width="1000" height="525" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 260" width="1000" height="260" role="img" aria-labelledby="title desc">
   <title id="title">what-changed</title>
-  <desc id="desc">what-changed reports the files a push or pull request changed, using git alone: zero runtime dependencies, no build step, no network.</desc>
+  <desc id="desc">what-changed reports the files a push or pull request changed, from git alone. Zero dependencies, no build, no network.</desc>
   <defs>
-    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0" stop-color="#4493f8"/>
-      <stop offset="1" stop-color="#3fb950"/>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#10212b"/>
+      <stop offset="1" stop-color="#16303a"/>
     </linearGradient>
-    <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
-      <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#161b22" stroke-width="1"/>
-    </pattern>
-    <clipPath id="frame"><rect width="1000" height="525" rx="12"/></clipPath>
+    <radialGradient id="glow" cx="0.82" cy="0.1" r="0.7">
+      <stop offset="0" stop-color="#ff7a59" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#ff7a59" stop-opacity="0"/>
+    </radialGradient>
+    <clipPath id="frame"><rect width="1000" height="260" rx="16"/></clipPath>
   </defs>
 
   <g clip-path="url(#frame)">
-    <rect width="1000" height="525" fill="#0d1117"/>
-    <rect width="1000" height="525" fill="url(#grid)"/>
+    <rect width="1000" height="260" fill="url(#bg)"/>
+    <rect width="1000" height="260" fill="url(#glow)"/>
+    <rect width="8" height="260" fill="#ff7a59"/>
   </g>
-  <rect x="0.5" y="0.5" width="999" height="524" rx="12" fill="none" stroke="#30363d"/>
 
-  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace">
+  <g font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+    <text x="56" y="112" font-size="64" font-weight="700" fill="#f2e3c6">what<tspan fill="#ff7a59">-</tspan>changed</text>
+    <text x="58" y="150" font-size="19" fill="#b9c7c9">The files a push or pull request changed, from git alone.</text>
 
-    <rect x="75" y="66" width="158" height="30" rx="15" fill="none" stroke="#3fb950" stroke-width="1.5"/>
-    <circle cx="93" cy="81" r="4" fill="#3fb950"/>
-    <text x="105" y="86" font-size="14" font-weight="600" fill="#3fb950">0 runtime deps</text>
-
-    <text x="75" y="218" font-size="64" font-weight="700" fill="url(#accent)">what-changed</text>
-
-    <text x="75" y="262" font-size="20" fill="#c9d1d9">The files a push or pull request</text>
-    <text x="75" y="286" font-size="20" fill="#c9d1d9">changed, from git alone.</text>
-
-    <g font-size="14">
-      <text x="75" y="330" fill="#f85149" text-decoration="line-through">bundled dist/ · token · fetches history</text>
-      <text x="75" y="352" fill="#3fb950">readable src/ · no token · no network</text>
+    <g font-size="13" font-weight="600" text-anchor="middle" fill="#f2e3c6">
+      <rect x="56" y="180" width="128" height="30" rx="15" fill="#f2e3c6" fill-opacity="0.08" stroke="#f2e3c6" stroke-opacity="0.35"/>
+      <text x="120" y="200">0 dependencies</text>
+      <rect x="196" y="180" width="88" height="30" rx="15" fill="#f2e3c6" fill-opacity="0.08" stroke="#f2e3c6" stroke-opacity="0.35"/>
+      <text x="240" y="200">no build</text>
+      <rect x="296" y="180" width="104" height="30" rx="15" fill="#f2e3c6" fill-opacity="0.08" stroke="#f2e3c6" stroke-opacity="0.35"/>
+      <text x="348" y="200">no network</text>
     </g>
+  </g>
 
-    <rect x="75" y="404" width="190" height="4" rx="2" fill="url(#accent)"/>
+  <line x1="640" y1="44" x2="640" y2="216" stroke="#f2e3c6" stroke-opacity="0.15"/>
 
-    <g transform="translate(620 125)">
-      <rect width="305" height="136" rx="8" fill="#161b22" stroke="#30363d"/>
-      <text x="16" y="30" font-size="13" fill="#c9d1d9">- <tspan fill="#4493f8">uses</tspan>: <tspan fill="#3fb950">lowlysre/what-changed@&lt;sha&gt;</tspan></text>
-      <text x="32" y="52" font-size="13" fill="#c9d1d9"><tspan fill="#4493f8">with</tspan>:</text>
-      <text x="48" y="74" font-size="13" fill="#c9d1d9"><tspan fill="#4493f8">files</tspan>: <tspan fill="#3fb950">src/**</tspan></text>
-      <line x1="16" y1="92" x2="289" y2="92" stroke="#30363d"/>
-      <text x="16" y="116" font-size="13" fill="#d2a8ff">any_changed <tspan fill="#8b949e">-&gt;</tspan> <tspan fill="#3fb950">'true'</tspan></text>
+  <g font-family="Consolas, Menlo, 'Liberation Mono', monospace" font-size="16">
+    <g transform="translate(676 42)">
+      <rect width="28" height="28" rx="6" fill="#7ee0b5"/>
+      <text x="14" y="20" text-anchor="middle" font-weight="700" fill="#10212b">A</text>
+      <text x="44" y="20" fill="#7ee0b5">src/glob.ts</text>
     </g>
-
-    <g transform="translate(620 289)">
-      <rect width="305" height="76" rx="8" fill="#161b22" stroke="#30363d"/>
-      <text x="16" y="30" font-size="13" fill="#d29922">build step: <tspan fill="#c9d1d9">none, src/main.ts runs</tspan></text>
-      <text x="16" y="54" font-size="13" fill="#3fb950">needs: <tspan fill="#c9d1d9">Node 24 and git</tspan></text>
+    <g transform="translate(676 86)">
+      <rect width="28" height="28" rx="6" fill="#f6c453"/>
+      <text x="14" y="20" text-anchor="middle" font-weight="700" fill="#10212b">M</text>
+      <text x="44" y="20" fill="#f6c453">src/index.ts</text>
     </g>
-
-    <text x="75" y="470" font-size="12" fill="#6e7681">files · files_ignore · files_yaml · dir_names · matrix</text>
-    <text x="75" y="488" font-size="12" fill="#6e7681">lowlysre/what-changed</text>
+    <g transform="translate(676 130)">
+      <rect width="28" height="28" rx="6" fill="#ff7a59"/>
+      <text x="14" y="20" text-anchor="middle" font-weight="700" fill="#10212b">D</text>
+      <text x="44" y="20" fill="#ff7a59" text-decoration="line-through">dist/main.js</text>
+    </g>
+    <g transform="translate(676 174)">
+      <rect width="28" height="28" rx="6" fill="#7cc4f0"/>
+      <text x="14" y="20" text-anchor="middle" font-weight="700" fill="#10212b">R</text>
+      <text x="44" y="20" fill="#7cc4f0">docs/how-to.md</text>
+    </g>
   </g>
 </svg>
