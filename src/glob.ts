@@ -106,15 +106,20 @@ export function expandBraces(pattern: string): string[] {
  *   and `c` while `[a-c]` is a range. An unclosed `[` is a literal.
  *
  * A class is tested with a one-character regex, which cannot backtrack.
+ * Patterns are read by code point, the unit paths are matched in, so a
+ * character outside the Basic Multilingual Plane is one literal, not two.
  *
  * @throws On a class the regex engine rejects, such as the reversed range `[z-a]`.
  */
 function tokenize(pattern: string): Token[] {
+  const charAt = (index: number): string => String.fromCodePoint(pattern.codePointAt(index)!);
   const tokens: Token[] = [];
   for (let i = 0; i < pattern.length; i++) {
-    const c = pattern[i];
+    const c = charAt(i);
     if (c === "\\" && i + 1 < pattern.length) {
-      tokens.push(literal(pattern[++i]));
+      const next = charAt(i + 1);
+      tokens.push(literal(next));
+      i += next.length;
     } else if (c === "?") {
       tokens.push({ accepts: notSlash });
     } else if (c === "[") {
@@ -128,13 +133,14 @@ function tokenize(pattern: string): Token[] {
       for (let k = i + (negated ? 2 : 1); k < end; k++) {
         const escaped = pattern[k] === "\\";
         if (escaped) k++;
-        const member = pattern[k];
+        const member = charAt(k);
+        k += member.length - 1;
         const plain = escaped || "[]^".includes(member);
-        body += plain && /\W/.test(member) ? `\\${member}` : member;
+        body += plain && "\\[]^-".includes(member) ? `\\${member}` : member;
       }
       let members: RegExp;
       try {
-        members = new RegExp(`^[${negated ? "^" : ""}${body}]$`, "s");
+        members = new RegExp(`^[${negated ? "^" : ""}${body}]$`, "su");
       } catch {
         throw new Error(`Invalid character class "${pattern.slice(i, end + 1)}" in glob pattern`);
       }
@@ -156,6 +162,7 @@ function tokenize(pattern: string): Token[] {
       i = j;
     } else {
       tokens.push(literal(c));
+      i += c.length - 1;
     }
   }
   return tokens;
@@ -165,21 +172,28 @@ function tokenize(pattern: string): Token[] {
  * Tests `path` against `tokens` by advancing the set of reachable token
  * positions one character at a time. Position `tokens.length` means the whole
  * pattern is consumed.
+ *
+ * `entered` is true when a position is reached from the token before it, and
+ * false when a wildcard stays on itself after consuming a character. A `**`
+ * may skip its `/` only when entered, which is when it has matched nothing:
+ * a `**` followed by `/test` then matches `test` and `a/test` but never `mytest`.
  */
 function matchTokens(tokens: readonly Token[], path: string): boolean {
-  const reach = (positions: Uint8Array, at: number): void => {
+  const reach = (positions: Uint8Array, at: number, entered: boolean): void => {
+    const token = tokens[at];
+    if (entered && token?.skipNext) reach(positions, at + 2, true);
     if (positions[at]) return;
     positions[at] = 1;
-    const token = tokens[at];
-    if (token?.loop) reach(positions, at + 1);
-    if (token?.skipNext) reach(positions, at + 2);
+    if (token?.loop) reach(positions, at + 1, true);
   };
   let current = new Uint8Array(tokens.length + 1);
-  reach(current, 0);
+  reach(current, 0, true);
   for (const char of path) {
     const next = new Uint8Array(tokens.length + 1);
     for (let at = 0; at < tokens.length; at++) {
-      if (current[at] && tokens[at].accepts(char)) reach(next, tokens[at].loop ? at : at + 1);
+      if (!current[at] || !tokens[at].accepts(char)) continue;
+      if (tokens[at].loop) reach(next, at, false);
+      else reach(next, at + 1, true);
     }
     current = next;
   }

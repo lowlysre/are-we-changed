@@ -74,8 +74,9 @@ jobs:
           ANY_CHANGED: ${{ steps.changed.outputs.any_changed }}
           SRC_ANY_CHANGED: ${{ steps.changed.outputs.src_any_changed }}
           CHANGED_KEYS: ${{ steps.changed.outputs.changed_keys }}
+        # The values are not echoed: directory names come from the pull request,
+        # and a name such as `##[error]x` in the log would run as a workflow command.
         run: |
-          echo "dirs=$DIRS any_changed=$ANY_CHANGED src_any_changed=$SRC_ANY_CHANGED changed_keys=$CHANGED_KEYS"
           jq --exit-status 'type == "array"' <<<"$DIRS" >/dev/null
           jq --exit-status 'type == "array"' <<<"$CHANGED_KEYS" >/dev/null
           [[ "$ANY_CHANGED" =~ ^(true|false)$ && "$SRC_ANY_CHANGED" =~ ^(true|false)$ ]]

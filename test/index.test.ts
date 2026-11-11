@@ -318,22 +318,6 @@ describe("reference usages", () => {
     assert.equal(out.modified_keys, "core cli");
     assert.equal(out.all_changed_files_count, "4");
   });
-
-  it("rejects groups whose outputs would overwrite another output", (t) => {
-    const repo = makeMixedRepo(t);
-    assert.throws(
-      () => repo.outputs({ files_yaml: "all:\n  - packages/**" }),
-      /group "all" and the top-level outputs both set the output "all_modified_files"/,
-    );
-    assert.throws(
-      () => repo.outputs({ files_yaml: "src:\n  - a\nsrc_all:\n  - b" }),
-      /group "src_all" and group "src" both set the output "src_all_modified_files"/,
-    );
-    assert.throws(
-      () => repo.outputs({ files_yaml: "src:\n  - a\nSRC:\n  - b" }),
-      /group "SRC" and group "src" both set the output "SRC_added_files"/,
-    );
-  });
 });
 
 describe("input validation", () => {

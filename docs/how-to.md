@@ -43,7 +43,7 @@ jobs:
     steps:
       - env:
           PACKAGE: ${{ matrix.package }}
-        run: echo "testing $PACKAGE"
+        run: npm test --workspace "$PACKAGE"
 ```
 
 Keep the `if:` on the `test` job: an empty matrix fails the workflow.

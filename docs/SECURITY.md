@@ -47,6 +47,7 @@ The other inputs come from the workflow, but a workflow can pass on something it
 
 - Pin the action to a full commit SHA. A tag can be moved to a different commit; a SHA can't.
 - Pass outputs to scripts through `env:`, never as `${{ }}` inside `run:`. `safe_output` reduces the damage of an inline expression and doesn't make one safe. [The how-to guide](how-to.md#use-file-lists-safely-in-shell-steps) has a full example, including `--` and NUL separators for file names that start with a dash or contain a newline.
+- Don't print outputs to the log yourself. The runner executes `##[command]` anywhere in a line, so `echo "$FILES"` lets a file or directory name forge an annotation, and `env:` doesn't prevent that. The action already logs every output with workflow commands stopped.
 - Treat the list as a claim about names only. The action reports which paths changed, and says nothing about whether their content is safe to build or run.
 - On `pull_request_target`, the usual warning applies: checking out and then running a pull request's code with the base repository's secrets is dangerous whatever this action reports.
 

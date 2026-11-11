@@ -5,6 +5,7 @@
  * text into the action's outputs. Git and the Actions runtime live elsewhere.
  */
 
+import { createMatcher } from "./glob.ts";
 import type { Matcher } from "./glob.ts";
 
 /** The four buckets every git status letter is folded into. */
@@ -125,7 +126,7 @@ export function summarize(
  * make one safe; passing the output through `env:` does.
  */
 export const escapeUnsafe = (text: string): string =>
-  text.replace(/[^\x20-\x7E]|[:*?"'<>|;`$()&!\\]/g, "\\$&");
+  text.replace(/[^\x20-\x7E]|[:*?"'<>|;`$()&!\\]/gu, "\\$&");
 
 /**
  * Renders one list as an output value.
@@ -160,5 +161,73 @@ export function toOutputs(summary: Summary, format: Format, prefix = ""): Record
   outputs[`${prefix}any_changed`] = String(summary.all_changed_files.length > 0);
   outputs[`${prefix}any_modified`] = String(summary.all_modified_files.length > 0);
   outputs[`${prefix}any_deleted`] = String(summary.deleted_files.length > 0);
+  return outputs;
+}
+
+/** What to report and how: the pattern, directory and format inputs. */
+export interface Selection extends DirNameOptions {
+  /** The `files` input. Empty selects every file. */
+  readonly files: readonly string[];
+  /** The `files_ignore` input. Applies to the top level and to every group. */
+  readonly filesIgnore: readonly string[];
+  /** The `files_yaml` input: group name → patterns. */
+  readonly groups: ReadonlyMap<string, readonly string[]>;
+  readonly format: Format;
+}
+
+/**
+ * Builds every output of the action from a list of changes.
+ *
+ * The top-level outputs are always set and reflect `files` and `filesIgnore`.
+ * Each group adds the same outputs under a `<group>_` prefix, filtered by its
+ * own patterns plus `filesIgnore`, and is listed in `changed_keys` or
+ * `modified_keys` when it has matches.
+ *
+ * Two names can spell the same output: group `all` makes `all_modified_files`,
+ * and groups `src` and `src_all` both make `src_all_modified_files`. The
+ * runner also treats output names case-insensitively, so `src` and `SRC`
+ * collide. Overwriting would publish one list under another's name.
+ *
+ * @throws On an invalid glob, or when two names spell the same output.
+ */
+export function buildOutputs(
+  changes: readonly Change[],
+  selection: Selection,
+): Record<string, string> {
+  const { files, filesIgnore, groups, format } = selection;
+  const outputs: Record<string, string> = {};
+  const owners = new Map<string, string>();
+  const publish = (entries: Record<string, string>, owner: string): void => {
+    for (const [name, value] of Object.entries(entries)) {
+      const key = name.toLowerCase();
+      const taken = owners.get(key);
+      if (taken) {
+        throw new Error(
+          `files_yaml: ${owner} and ${taken} both set the output "${name}". Rename one of the groups.`,
+        );
+      }
+      owners.set(key, owner);
+      outputs[name] = value;
+    }
+  };
+
+  const top = summarize(changes, createMatcher(files, filesIgnore), selection);
+  publish(toOutputs(top, format), "the top-level outputs");
+
+  const changedKeys: string[] = [];
+  const modifiedKeys: string[] = [];
+  for (const [name, patterns] of groups) {
+    const summary = summarize(changes, createMatcher(patterns, filesIgnore), selection);
+    publish(toOutputs(summary, format, `${name}_`), `group "${name}"`);
+    if (summary.all_changed_files.length > 0) changedKeys.push(name);
+    if (summary.all_modified_files.length > 0) modifiedKeys.push(name);
+  }
+  publish(
+    {
+      changed_keys: formatList(changedKeys, format),
+      modified_keys: formatList(modifiedKeys, format),
+    },
+    "the top-level outputs",
+  );
   return outputs;
 }

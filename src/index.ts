@@ -2,17 +2,16 @@
  * what-changed: orchestration
  *
  * Reads inputs from an environment map, asks git for the diff and returns the
- * outputs. Nothing here writes to the process; main.ts does that, so tests
- * can call `run` directly.
+ * outputs. It reads the event file and runs git but writes nothing; main.ts
+ * does that, so tests can call `run` directly.
  */
 
 import { readFileSync } from "node:fs";
 
-import { formatList, parseNameStatus, summarize, toOutputs } from "./changes.ts";
+import { buildOutputs, parseNameStatus } from "./changes.ts";
 import type { Change, Format } from "./changes.ts";
 import { createGit, diffNameStatus, resolveRange } from "./git.ts";
 import type { EventPayload } from "./git.ts";
-import { createMatcher } from "./glob.ts";
 import { parseGroups } from "./yaml.ts";
 import type { Groups } from "./yaml.ts";
 
@@ -93,15 +92,9 @@ function readInputs(env: Env): Inputs {
 /**
  * Runs the action against the repository at `cwd`.
  *
- * The top-level outputs are always set and reflect `files` and `files_ignore`.
- * Each `files_yaml` group adds the same outputs under a `<group>_` prefix,
- * filtered by its own patterns plus `files_ignore`.
- *
- * Two names can spell the same output: group `all` makes `all_modified_files`,
- * and groups `src` and `src_all` both make `src_all_modified_files`. The
- * runner also treats output names case-insensitively, so `src` and `SRC`
- * collide. A collision fails the run, because overwriting would publish one
- * list under another's name.
+ * This is the only place the pieces meet: it reads the event file, asks git
+ * for the two commits and their diff, and hands the result to `buildOutputs`.
+ * Every rule lives in a function it calls.
  *
  * @throws On invalid inputs, missing history, identical commits without
  *   `skip_same_sha`, or colliding output names. Messages are written for the
@@ -126,40 +119,5 @@ export function run(env: Env = process.env, cwd: string = process.cwd()): Result
       `Base and head are the same commit (${head}). Set \`skip_same_sha: true\` to report no changes instead.`,
     );
   }
-
-  const outputs: Record<string, string> = {};
-  const owners = new Map<string, string>();
-  const publish = (entries: Record<string, string>, owner: string): void => {
-    for (const [name, value] of Object.entries(entries)) {
-      const key = name.toLowerCase();
-      const taken = owners.get(key);
-      if (taken) {
-        throw new Error(
-          `files_yaml: ${owner} and ${taken} both set the output "${name}". Rename one of the groups.`,
-        );
-      }
-      owners.set(key, owner);
-      outputs[name] = value;
-    }
-  };
-
-  const top = summarize(changes, createMatcher(inputs.files, inputs.filesIgnore), inputs);
-  publish(toOutputs(top, inputs.format), "the top-level outputs");
-
-  const changedKeys: string[] = [];
-  const modifiedKeys: string[] = [];
-  for (const [name, patterns] of inputs.groups) {
-    const summary = summarize(changes, createMatcher(patterns, inputs.filesIgnore), inputs);
-    publish(toOutputs(summary, inputs.format, `${name}_`), `group "${name}"`);
-    if (summary.all_changed_files.length > 0) changedKeys.push(name);
-    if (summary.all_modified_files.length > 0) modifiedKeys.push(name);
-  }
-  publish(
-    {
-      changed_keys: formatList(changedKeys, inputs.format),
-      modified_keys: formatList(modifiedKeys, inputs.format),
-    },
-    "the top-level outputs",
-  );
-  return { outputs, messages };
+  return { outputs: buildOutputs(changes, inputs), messages };
 }

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+  buildOutputs,
   escapeUnsafe,
   formatList,
   parseNameStatus,
@@ -113,6 +114,10 @@ describe("formatList", () => {
   it("escapes non-ASCII and backslashes", () => {
     assert.equal(escapeUnsafe("a\nb\\c`d"), "a\\\nb\\\\c\\`d");
   });
+
+  it("escapes a character outside the BMP as one unit", () => {
+    assert.equal(escapeUnsafe("😀.txt"), "\\😀.txt");
+  });
 });
 
 describe("toOutputs", () => {
@@ -126,5 +131,44 @@ describe("toOutputs", () => {
     assert.equal(outputs.docs_any_changed, "false");
     assert.equal(outputs.docs_any_modified, "true");
     assert.equal(outputs.docs_any_deleted, "true");
+  });
+});
+
+describe("buildOutputs", () => {
+  const changes: Change[] = [
+    { status: "added", path: "src/new.js" },
+    { status: "deleted", path: "docs/gone.md" },
+  ];
+  const build = (groups: Record<string, string[]>, files: string[] = []) =>
+    buildOutputs(changes, {
+      files,
+      filesIgnore: [],
+      groups: new Map(Object.entries(groups)),
+      format: {},
+    });
+
+  it("sets top-level outputs, group outputs and the key lists", () => {
+    const outputs = build({ src: ["src/**"], docs: ["docs/**"], ci: [".github/**"] }, ["src/**"]);
+    assert.equal(outputs.all_changed_files, "src/new.js");
+    assert.equal(outputs.src_any_changed, "true");
+    assert.equal(outputs.docs_any_changed, "false");
+    assert.equal(outputs.docs_any_deleted, "true");
+    assert.equal(outputs.changed_keys, "src");
+    assert.equal(outputs.modified_keys, "src docs");
+  });
+
+  it("rejects groups whose outputs would overwrite another output", () => {
+    assert.throws(
+      () => build({ all: ["a"] }),
+      /group "all" and the top-level outputs both set the output "all_modified_files"/,
+    );
+    assert.throws(
+      () => build({ src: ["a"], src_all: ["b"] }),
+      /group "src_all" and group "src" both set the output "src_all_modified_files"/,
+    );
+    assert.throws(
+      () => build({ src: ["a"], SRC: ["b"] }),
+      /group "SRC" and group "src" both set the output "SRC_added_files"/,
+    );
   });
 });
