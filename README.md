@@ -16,6 +16,7 @@ Reports the files a push, pull request, or merge group changed, filtered by glob
 - [Quick start](#quick-start)
 - [Can I migrate cleanly from tj-actions/changed-files?](#can-i-migrate-cleanly-from-tj-actionschanged-files)
 - [Documentation](#documentation)
+- [Related](#related)
 
 ## Quick start
 
@@ -96,3 +97,8 @@ A few behaviours differ even when every input is supported. The one most likely 
 - [Reference](docs/reference.md): inputs, outputs, which commits are compared, the glob dialect, the `files_yaml` format
 - [Migrating from tj-actions/changed-files](docs/migration.md): behaviour differences and every [upstream](https://github.com/tj-actions/changed-files) input and output without an equivalent
 - [Design notes](docs/explanation.md): why the action exists, why it never fetches, why the YAML parser is strict
+- [Security](docs/SECURITY.md): what the action can reach, how it handles hostile file names, how to report a vulnerability
+
+## Related
+
+[are-we-good](https://github.com/lowlydba/are-we-good) is a sibling action by the same author. It rolls the results of many jobs and matrix legs into one pass/fail check, which pairs well with jobs that what-changed lets you skip.
