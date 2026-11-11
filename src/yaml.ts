@@ -1,5 +1,5 @@
 /**
- * what-changed — `files_yaml` parsing
+ * what-changed: `files_yaml` parsing
  *
  * Accepts a strict YAML subset:
  *
@@ -7,21 +7,53 @@
  *     - pattern         # list item, plain or fully quoted
  *     - '!negated/**'
  *
- * Anything else fails with the offending line; nothing is guessed. Every
- * accepted document means the same thing to a real YAML parser.
+ * The contract is that every accepted document means the same thing to a real
+ * YAML parser. Anything outside the subset fails with the offending line, so a
+ * pattern is never silently read differently than its author intended.
  * Input starting with `{` is parsed as JSON instead.
  */
 
-/** Group name → glob patterns. */
-export type Groups = Record<string, string[]>;
+/**
+ * Group name → glob patterns, in document order.
+ *
+ * A Map because group names are user input: a plain object would treat
+ * `__proto__` as its prototype and drop the group.
+ */
+export type Groups = Map<string, string[]>;
 
+/** Throws a parse error for the current line. */
 type Fail = (why: string) => never;
 
+/** Restricted to characters that are valid in an output name. */
 const GROUP_NAME = /^[A-Za-z0-9_-]+$/;
 
-/** Plain scalars that real YAML would read as something other than a string. */
-const NEEDS_QUOTES = /^[!&*|>{}[\]%@`"'#,]|^[?:-](\s|$)|:\s|:$/;
+/** Plain scalars that YAML reads as syntax: tags, anchors, aliases, flow, block scalars, maps. */
+const INDICATOR = /^[!&*|>{}[\]%@`"'#,]|^[?:-](\s|$)|:\s|:$/;
 
+/**
+ * Plain scalars that YAML resolves to a null, boolean, number or timestamp
+ * rather than a string. Covers the YAML 1.1 forms (`yes`, `0o17`, `1:30`) as
+ * well as 1.2, since parsers in the wild implement either.
+ */
+const IMPLICIT_TYPE = new RegExp(
+  `^(?:${[
+    "~|null|true|false|yes|no|on|off|y|n",
+    "[-+]?(\\d[\\d_]*(\\.[\\d_]*)?|\\.\\d[\\d_]*)(e[-+]?\\d+)?",
+    "[-+]?0(x[\\da-f_]+|o[0-7_]+|b[01_]+)",
+    "[-+]?\\d[\\d_]*(:[0-5]?\\d)+(\\.\\d*)?",
+    "[-+]?\\.(inf|nan)",
+    "\\d{4}-\\d\\d?-\\d\\d?([t ].*)?",
+  ].join("|")})$`,
+  "i",
+);
+
+/**
+ * Reads one list item's value.
+ *
+ * Quoted values are taken literally and have to close on the same line with
+ * nothing but a comment after them. Escapes are rejected instead of decoded,
+ * because `''` and `\t` mean different things in the two quote styles.
+ */
 function parseScalar(text: string, fail: Fail): string {
   const quote = text[0];
   if (quote === "'" || quote === '"') {
@@ -35,10 +67,13 @@ function parseScalar(text: string, fail: Fail): string {
   }
   const value = text.replace(/\s+#.*$/, "").trim();
   if (value === "") fail("empty pattern");
-  if (NEEDS_QUOTES.test(value)) fail("unsupported plain value, wrap it in quotes");
+  if (INDICATOR.test(value) || IMPLICIT_TYPE.test(value)) {
+    fail("unsupported plain value, wrap it in quotes");
+  }
   return value;
 }
 
+/** Parses the JSON form: an object of group name → pattern or list of patterns. */
 function parseJson(text: string): Groups {
   let data: unknown;
   try {
@@ -49,7 +84,7 @@ function parseJson(text: string): Groups {
   if (data === null || typeof data !== "object" || Array.isArray(data)) {
     throw new Error("files_yaml: JSON must be an object of group names to pattern lists");
   }
-  const groups: Groups = {};
+  const groups: Groups = new Map();
   for (const [name, value] of Object.entries(data)) {
     if (!GROUP_NAME.test(name)) throw new Error(`files_yaml: invalid group name "${name}"`);
     const patterns: unknown = typeof value === "string" ? [value] : value;
@@ -60,16 +95,26 @@ function parseJson(text: string): Groups {
     if (!valid) {
       throw new Error(`files_yaml: group "${name}" must be a non-empty list of pattern strings`);
     }
-    groups[name] = patterns as string[];
+    groups.set(name, patterns as string[]);
   }
   return groups;
 }
 
-/** Parses the `files_yaml` input. */
+/**
+ * Parses the `files_yaml` input.
+ *
+ * Items of one group have to share an indentation. YAML reads a deeper `- x`
+ * line as a continuation of the previous plain scalar, so accepting it as a
+ * second pattern would break the same-meaning contract.
+ *
+ * @throws With the 1-based line number and the line's text for any construct
+ *   outside the subset, and for a group or document with no patterns.
+ */
 export function parseGroups(text: string): Groups {
   if (text.trimStart().startsWith("{")) return parseJson(text);
-  const groups: Groups = {};
+  const groups: Groups = new Map();
   let current: string[] | undefined;
+  let indent: number | undefined;
   for (const [index, raw] of text.split(/\r?\n/).entries()) {
     const fail: Fail = (why) => {
       throw new Error(`files_yaml line ${index + 1}: ${why}: ${raw.trim()}`);
@@ -77,21 +122,25 @@ export function parseGroups(text: string): Groups {
     const line = raw.trimEnd();
     if (line.trim() === "" || line.trim().startsWith("#")) continue;
     if (line.includes("\t")) fail("tabs are not supported");
-    const item = /^\s*-\s+(.*)$/.exec(line);
+    const item = /^( *)-\s+(.*)$/.exec(line);
     if (item) {
       if (!current) fail("list item before any group");
-      current.push(parseScalar(item[1], fail));
+      indent ??= item[1].length;
+      if (item[1].length !== indent) fail("list items in a group must share one indentation");
+      current.push(parseScalar(item[2], fail));
       continue;
     }
     const key = /^([^\s:#]+):$/.exec(line.replace(/\s+#.*$/, ""));
     if (!key) fail("expected `group:` at column 0 or `- pattern`");
     if (!GROUP_NAME.test(key[1])) fail("group names may only contain letters, digits, `_` and `-`");
-    if (Object.hasOwn(groups, key[1])) fail("duplicate group");
-    current = groups[key[1]] = [];
+    if (groups.has(key[1])) fail("duplicate group");
+    current = [];
+    indent = undefined;
+    groups.set(key[1], current);
   }
-  for (const [name, patterns] of Object.entries(groups)) {
+  for (const [name, patterns] of groups) {
     if (patterns.length === 0) throw new Error(`files_yaml: group "${name}" has no patterns`);
   }
-  if (Object.keys(groups).length === 0) throw new Error("files_yaml: no groups found");
+  if (groups.size === 0) throw new Error("files_yaml: no groups found");
   return groups;
 }

@@ -13,21 +13,47 @@ describe("parseGroups: accepted subset", () => {
       "",
       "pom:",
       '- "pom.xml"',
-      "  - path with spaces/file.txt",
-      "  - 'has # hash'",
-      "  - a#b",
+      "- path with spaces/file.txt",
+      "- 'has # hash'",
+      "- a#b",
+      "- 2024/**",
+      "- 1.0.x",
+      "- nullable.ts",
     ].join("\r\n");
-    assert.deepEqual(parseGroups(text), {
-      src: ["src/main/**", "!src/main/**/*.md"],
-      pom: ["pom.xml", "path with spaces/file.txt", "has # hash", "a#b"],
-    });
+    assert.deepEqual(
+      parseGroups(text),
+      new Map([
+        ["src", ["src/main/**", "!src/main/**/*.md"]],
+        [
+          "pom",
+          [
+            "pom.xml",
+            "path with spaces/file.txt",
+            "has # hash",
+            "a#b",
+            "2024/**",
+            "1.0.x",
+            "nullable.ts",
+          ],
+        ],
+      ]),
+    );
   });
 
   it("parses JSON when the input starts with {", () => {
-    assert.deepEqual(parseGroups(' {"a": ["x/**", "!x/*.md"], "b-2": "y"}'), {
-      a: ["x/**", "!x/*.md"],
-      "b-2": ["y"],
-    });
+    assert.deepEqual(
+      parseGroups(' {"a": ["x/**", "!x/*.md"], "b-2": "y"}'),
+      new Map([
+        ["a", ["x/**", "!x/*.md"]],
+        ["b-2", ["y"]],
+      ]),
+    );
+  });
+
+  it("keeps __proto__ as an ordinary group name", () => {
+    const expected = new Map([["__proto__", ["x"]]]);
+    assert.deepEqual(parseGroups("__proto__:\n  - x"), expected);
+    assert.deepEqual(parseGroups('{"__proto__": ["x"]}'), expected);
   });
 });
 
@@ -44,6 +70,15 @@ describe("parseGroups: rejections", () => {
     ["nested map", "a:\n  b:\n    - x", /line 2: expected `group:`/],
     ["map inside a list", "a:\n  - b: c", /line 2: unsupported plain value/],
     ["nested list", "a:\n  - - x", /line 2: unsupported plain value/],
+    ["plain boolean", "a:\n  - true", /line 2: unsupported plain value/],
+    ["plain YAML 1.1 boolean", "a:\n  - Yes", /line 2: unsupported plain value/],
+    ["plain null", "a:\n  - ~", /line 2: unsupported plain value/],
+    ["plain integer", "a:\n  - 123", /line 2: unsupported plain value/],
+    ["plain float", "a:\n  - -1.5e3", /line 2: unsupported plain value/],
+    ["plain hex", "a:\n  - 0x1F", /line 2: unsupported plain value/],
+    ["plain date", "a:\n  - 2024-01-31", /line 2: unsupported plain value/],
+    ["deeper item (scalar continuation)", "a:\n  - x\n    - y", /line 3: list items in a group/],
+    ["shallower item", "a:\n  - x\n- y", /line 3: list items in a group/],
     ["item before any group", "- x", /line 1: list item before any group/],
     ["duplicate group", "a:\n  - x\na:\n  - y", /line 3: duplicate group/],
     ["invalid group name", "a.b:\n  - x", /line 1: group names may only contain/],

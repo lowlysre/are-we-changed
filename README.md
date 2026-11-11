@@ -1,13 +1,21 @@
 # what-changed
 
+![what-changed: the files a push or pull request changed, from git alone](docs/assets/hero.png)
+
 [![CI](https://github.com/lowlysre/what-changed/actions/workflows/ci.yml/badge.svg)](https://github.com/lowlysre/what-changed/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Reports the files a push, pull request, or merge group changed, filtered by glob patterns. It covers the commonly used part of tj-actions/changed-files in about 600 lines you can read.
+Reports the files a push, pull request, or merge group changed, filtered by glob patterns. It covers the commonly used part of [tj-actions/changed-files](https://github.com/tj-actions/changed-files) in about 550 lines of code you can read.
 
 - Zero runtime dependencies: Node built-ins and `git`
 - No bundle, no build step: the TypeScript in `src/` is the code that runs
 - No token, no API calls, no network access
+
+## Contents
+
+- [Quick start](#quick-start)
+- [Can I migrate cleanly from tj-actions/changed-files?](#can-i-migrate-cleanly-from-tj-actionschanged-files)
+- [Documentation](#documentation)
 
 ## Quick start
 
@@ -20,7 +28,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          fetch-depth: 2 # the action never fetches, so the parent commit has to be here
+          fetch-depth: 2
 
       - uses: lowlysre/what-changed@<commit-sha>
         id: changed
@@ -31,16 +39,19 @@ jobs:
         run: npm test
 ```
 
+> [!IMPORTANT]
+> The action never fetches, so the checkout step has to bring the history. `fetch-depth: 2` covers push events and the default pull request checkout. `fetch-depth: 0` (all history) covers everything, and is required for merge groups, `base_sha`, `since_last_remote_commit`, and a pull request checked out at its head branch.
+
 `any_changed` is `'true'` or `'false'`. `all_changed_files` holds the matching paths, space-separated.
 
 There are no release tags yet, so pin to a full commit SHA.
 
 ## Can I migrate cleanly from tj-actions/changed-files?
 
-Yes, if both of these hold:
+Yes, if both of these hold for your [tj-actions/changed-files](https://github.com/tj-actions/changed-files) step:
 
 - Every input you set is in the supported list below
-- The checkout step has `fetch-depth: 2` or deeper (see [the fetch-depth table](docs/how-to.md#fix-is-not-available-in-this-checkout))
+- The checkout step has `fetch-depth: 2`, or `fetch-depth: 0` for all history (see [the fetch-depth table](docs/how-to.md#fix-is-not-available-in-this-checkout) for which one)
 
 Then the migration is the `uses:` line and nothing else. Output names match.
 
@@ -83,5 +94,5 @@ A few behaviours differ even when every input is supported. The one most likely 
 
 - [How-to guides](docs/how-to.md): matrix from changed directories, pattern groups, comparing two commits, fixing history errors, shell-safe output
 - [Reference](docs/reference.md): inputs, outputs, which commits are compared, the glob dialect, the `files_yaml` format
-- [Migrating from tj-actions/changed-files](docs/migration.md): behaviour differences and every upstream input and output without an equivalent
+- [Migrating from tj-actions/changed-files](docs/migration.md): behaviour differences and every [upstream](https://github.com/tj-actions/changed-files) input and output without an equivalent
 - [Design notes](docs/explanation.md): why the action exists, why it never fetches, why the YAML parser is strict

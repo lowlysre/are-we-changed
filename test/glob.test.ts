@@ -72,10 +72,14 @@ describe("glob dialect", () => {
     [" src/*.js ", "src/a.js", true],
     // case sensitivity
     ["*.MD", "readme.md", false],
+    // newlines, which git allows in file names
+    ["src/**", "src/a\nb.ts", true],
+    ["**/*.ts", "a\nb/c.ts", true],
+    ["*.ts", "a.ts\n", false],
   ];
 
   for (const [pattern, path, expected] of table) {
-    it(`${pattern} ${expected ? "matches" : "rejects"} ${path}`, () => {
+    it(`${pattern} ${expected ? "matches" : "rejects"} ${JSON.stringify(path)}`, () => {
       assert.equal(compileGlob(pattern).regex.test(path), expected);
     });
   }

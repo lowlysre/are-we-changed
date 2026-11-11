@@ -1,6 +1,6 @@
 # Migrating from tj-actions/changed-files
 
-The [README](../README.md#can-i-migrate-cleanly-from-tj-actionschanged-files) has the quick check. This page is the full comparison, against upstream v47.0.6.
+The [README](../README.md#can-i-migrate-cleanly-from-tj-actionschanged-files) has the quick check. This page is the full comparison, against [tj-actions/changed-files](https://github.com/tj-actions/changed-files) v47.0.6.
 
 - [Steps](#steps)
 - [Behaviour that differs](#behaviour-that-differs)

@@ -306,6 +306,18 @@ describe("reference usages", () => {
     assert.equal(out.modified_keys, "core cli");
     assert.equal(out.all_changed_files_count, "4");
   });
+
+  it("rejects groups whose outputs would overwrite another output", (t) => {
+    const repo = makeMixedRepo(t);
+    assert.throws(
+      () => repo.outputs({ files_yaml: "all:\n  - packages/**" }),
+      /group "all" and the top-level outputs both set the output "all_modified_files"/,
+    );
+    assert.throws(
+      () => repo.outputs({ files_yaml: "src:\n  - a\nsrc_all:\n  - b" }),
+      /group "src_all" and group "src" both set the output "src_all_modified_files"/,
+    );
+  });
 });
 
 describe("input validation", () => {
@@ -339,6 +351,21 @@ describe("command line entry point", () => {
     assert.equal(status, 0);
     assert.match(written, /^all_changed_files<<(wc_[0-9a-f-]+)\nroot\.txt\n\1\n/m);
     assert.match(written, /^any_changed<<(wc_[0-9a-f-]+)\ntrue\n\1\n/m);
+  });
+
+  it("echoes outputs with workflow commands stopped", (t) => {
+    const repo = makeRepo(t);
+    repo.write("a.txt");
+    repo.commit("base");
+    repo.write("##[error]forged.txt");
+    repo.commit("hostile file name");
+    const { status, stdout } = invoke(repo, {});
+    assert.equal(status, 0);
+    const lines = stdout.split("\n");
+    const stop = lines.findIndex((line) => /^::stop-commands::wc_[0-9a-f-]+$/.test(line));
+    const resume = lines.indexOf(`::${lines[stop].slice("::stop-commands::".length)}::`);
+    const hostile = lines.findIndex((line) => line.includes("##[error]"));
+    assert.ok(stop !== -1 && stop < hostile && hostile < resume);
   });
 
   it("exits non-zero with an error command on failure", (t) => {

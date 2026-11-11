@@ -109,8 +109,8 @@ The action never fetches. When a commit it needs is missing, it fails and tells 
 |-----------|---------------|
 | Push events | `2` |
 | Pull requests with the default checkout (the merge commit) | `2` |
-| Pull requests with `ref:` set to the head branch | `0` |
-| Merge groups, `base_sha`, `since_last_remote_commit` | `0` |
+| Pull requests with `ref:` set to the head branch | `0` (all history) |
+| Merge groups, `base_sha`, `since_last_remote_commit` | `0` (all history) |
 
 ## Use file lists safely in shell steps
 
@@ -124,7 +124,9 @@ A file name is attacker-controlled input on a pull request. Pass outputs through
     escape_json: false
 - env:
     FILES: ${{ steps.changed.outputs.all_changed_files }}
-  run: jq -r '.[]' <<<"$FILES" | xargs -d '\n' -r npx prettier --check
+  run: jq --raw-output0 '.[]' <<<"$FILES" | xargs -0 -r npx prettier --check --
 ```
+
+`--raw-output0` and `xargs -0` split on NUL, the one byte a path can't contain; a newline is a valid character in a git file name. The trailing `--` stops a file named like `--plugin=./payload.js` from being read as an option.
 
 `safe_output` (on by default) backslash-escapes shell metacharacters in the non-JSON lists. It reduces the damage of an inline `${{ }}`, but it doesn't make one safe.

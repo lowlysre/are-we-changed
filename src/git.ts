@@ -1,12 +1,14 @@
 /**
- * what-changed — git access
+ * what-changed: git access
  *
  * Chooses the two commits to compare and diffs them. Never fetches: missing
- * history is an error that says how to fix the checkout.
+ * history is an error that says how to fix the checkout. A silent fallback to
+ * a different base would produce a wrong file list that looks valid.
  */
 
 import { execFileSync } from "node:child_process";
 
+/** The two ways this module runs git, bound to one repository. */
 export interface Git {
   /** Runs git and returns stdout; throws on a non-zero exit. */
   git(...args: string[]): string;
@@ -14,9 +16,13 @@ export interface Git {
   tryGit(...args: string[]): string | null;
 }
 
+/** The inputs that steer commit selection. Empty strings mean "not set". */
 export interface RangeOptions {
+  /** The `base_sha` input: any revision git can resolve to a commit. */
   readonly baseSha?: string;
+  /** The `sha` input. Defaults to `HEAD`. */
   readonly sha?: string;
+  /** The `since_last_remote_commit` input. */
   readonly sinceLastRemoteCommit?: boolean;
 }
 
@@ -30,14 +36,23 @@ export interface EventPayload {
   readonly merge_group?: { readonly base_sha?: string };
 }
 
+/** Resolved object IDs. `base` is a commit, or the empty tree for a root commit. */
 export interface Range {
   readonly base: string;
   readonly head: string;
 }
 
+/** Appended to every missing-history error so the failure carries its fix. */
 const HISTORY_HINT =
   "Set `fetch-depth: 0` on actions/checkout (`fetch-depth: 2` is enough for push events and pull request merge commits).";
 
+/**
+ * Binds git to the repository at `cwd`.
+ *
+ * `safe.directory` is set per call because container jobs run as a different
+ * user than the one that owns the checkout, which git otherwise refuses.
+ * `core.quotepath=false` keeps non-ASCII paths as UTF-8 instead of octal escapes.
+ */
 export function createGit(cwd: string): Git {
   const prefix = [
     "-c",
@@ -74,6 +89,15 @@ export function createGit(cwd: string): Git {
  * | everything else               | parent of head (empty tree for a root commit) |
  *
  * `sinceLastRemoteCommit` swaps in `event.before` when that commit exists locally.
+ * A force push or a new branch leaves `before` unknown or all zeros, and the
+ * table above applies instead.
+ *
+ * Revisions come from workflow inputs and event payloads, so each is resolved
+ * with `--end-of-options` and can never be read as a git flag. A root commit
+ * is compared against the empty tree, which reports every file as added.
+ *
+ * @throws When `cwd` is not a repository, or a commit the comparison needs is
+ *   not in the checkout. The message names the `fetch-depth` to set.
  */
 export function resolveRange(
   { tryGit }: Git,
@@ -128,12 +152,18 @@ export function resolveRange(
       `The parent of ${head} is not available in this shallow checkout. ${HISTORY_HINT}`,
     );
   }
-  // Root commit: compare against the empty tree so every file counts as added.
   const emptyTree = tryGit("hash-object", "-t", "tree", "--stdin");
   if (!emptyTree) throw new Error("Could not compute the empty tree for a root commit.");
   return { base: emptyTree, head };
 }
 
+/**
+ * Diffs two trees and returns raw `--name-status -z` output for `parseNameStatus`.
+ *
+ * `-z` is what makes paths with spaces, quotes or newlines unambiguous. `-M`
+ * and `--no-ext-diff` are passed explicitly so the result does not depend on
+ * the runner's git config.
+ */
 export function diffNameStatus({ git }: Git, base: string, head: string): string {
   return git(
     "diff",

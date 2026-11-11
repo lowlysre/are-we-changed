@@ -55,6 +55,8 @@ Each `files_yaml` group repeats the file outputs with its name as a prefix. A gr
 
 The unprefixed outputs are always set. They reflect `files` and `files_ignore` only.
 
+Two groups, or a group and an unprefixed output, can spell the same output name: a group named `all` would set `all_modified_files`. The step fails on any such collision and names the output.
+
 ## Compared commits
 
 The head is `sha`, or `HEAD` when `sha` is empty. The base depends on the event:
@@ -118,6 +120,8 @@ group_name:            # letters, digits, `_` and `-`, starting at column 0
 The parser accepts that shape and nothing else. Each of these fails with an error naming the line:
 
 - Anchors, aliases, and tags, which is what an unquoted leading `&`, `*`, or `!` means in YAML
+- Unquoted values YAML reads as something other than a string: `true`, `null`, `123`, `2024-01-31`
+- List items in one group at different indentation
 - Flow style: `[a, b]`, `{a: b}`
 - Block scalars: `|`, `>`
 - Nested maps and `key: value` pairs

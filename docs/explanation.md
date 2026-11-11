@@ -7,11 +7,11 @@
 
 ## Why this action exists
 
-In March 2025 tj-actions/changed-files was compromised ([CVE-2025-30066](https://github.com/advisories/GHSA-mrrh-fwg8-r2c3)). The advisory describes it: "Attackers retroactively modified multiple version tags to reference a malicious commit, exposing CI/CD secrets in workflow logs."
+In March 2025 [tj-actions/changed-files](https://github.com/tj-actions/changed-files) was compromised ([CVE-2025-30066](https://github.com/advisories/GHSA-mrrh-fwg8-r2c3)). The advisory describes it: "Attackers retroactively modified multiple version tags to reference a malicious commit, exposing CI/CD secrets in workflow logs."
 
 Two properties of the action made that worse than it had to be. Most users referenced a version tag, and a tag can be repointed. The action also ships as a bundled `dist/` built from a tree of third-party packages, so reading the repository doesn't tell you what runs.
 
-what-changed is built so that neither applies. It has no runtime dependencies, so there's no package tree to audit. It has no bundle, so the roughly 600 lines in `src/` are the whole program. The README tells you to pin a commit SHA, which can't be moved.
+what-changed is built so that neither applies. It has no runtime dependencies, so there's no package tree to audit. It has no bundle, so the roughly 550 lines of code in `src/` are the whole program. The README tells you to pin a commit SHA, which can't be moved.
 
 The cost is surface area. It supports 14 of upstream's 61 inputs, picked from how about 20 real workflows use the action. If a workflow needs one of the other 47, [the migration guide](migration.md) says so up front.
 

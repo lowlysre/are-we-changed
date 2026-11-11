@@ -1,20 +1,34 @@
 /**
- * what-changed — glob matching
+ * what-changed: glob matching
  *
  * Dialect: `*`, `**`, `?`, `[...]`, `{a,b}`, `\` escapes and a leading `!`.
  * Paths are always `/`-separated and matching is case-sensitive.
+ *
+ * Each glob compiles to one anchored regex. The dialect is hand-rolled so the
+ * action has no dependency and behaves the same on every Node version;
+ * `test/glob.test.ts` holds the table that defines it.
  */
 
+/** One compiled pattern. */
 export interface CompiledGlob {
+  /** True when the pattern had a leading `!`, which `regex` does not include. */
   readonly negated: boolean;
+  /** Matches a whole path, never a substring. */
   readonly regex: RegExp;
 }
 
+/** Decides whether a repository-relative, `/`-separated path is selected. */
 export type Matcher = (path: string) => boolean;
 
+/** Escapes `text` for literal use in regex source. */
 const escapeRegex = (text: string): string => text.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
 
-/** Expands `{a,b}` alternatives bash-style. Braces without a top-level comma stay literal. */
+/**
+ * Expands `{a,b}` alternatives bash-style, recursing for nested and repeated groups.
+ * Braces without a top-level comma stay literal, and `\{` never opens a group.
+ *
+ * @returns Every brace-free pattern the input stands for, at least one.
+ */
 export function expandBraces(pattern: string): string[] {
   for (let i = 0; i < pattern.length; i++) {
     if (pattern[i] === "\\") {
@@ -45,7 +59,14 @@ export function expandBraces(pattern: string): string[] {
   return [pattern];
 }
 
-/** Translates one brace-free glob into regex source. */
+/**
+ * Translates one brace-free glob into unanchored regex source.
+ *
+ * - `**` spans directories only as a whole path segment; elsewhere it is `*`.
+ * - A class never matches `/`, so `a[!b]c` cannot cross a directory boundary.
+ * - The closing `]` is searched from the second member on, which lets `]` be
+ *   the first member as in `[]a]`. An unclosed `[` is a literal.
+ */
 function translate(pattern: string): string {
   let re = "";
   for (let i = 0; i < pattern.length; i++) {
@@ -57,7 +78,6 @@ function translate(pattern: string): string {
     } else if (c === "[") {
       const negated = pattern[i + 1] === "!" || pattern[i + 1] === "^";
       const start = i + (negated ? 2 : 1);
-      // Searching from start + 1 lets `]` be the first member, as in `[]a]`.
       const end = pattern.indexOf("]", start + 1);
       if (end === -1) {
         re += "\\[";
@@ -87,7 +107,15 @@ function translate(pattern: string): string {
   return re;
 }
 
-/** Compiles one pattern. A leading `!` sets `negated`; the regex never includes it. */
+/**
+ * Compiles one pattern. Surrounding whitespace and a leading `./` are dropped,
+ * and a trailing `/` means everything below that directory.
+ *
+ * The regex uses the `s` flag because git allows newlines in file names and
+ * `**` has to span them.
+ *
+ * @throws When nothing is left of the pattern after normalization.
+ */
 export function compileGlob(raw: string): CompiledGlob {
   let pattern = raw.trim();
   const negated = pattern.startsWith("!");
@@ -95,13 +123,20 @@ export function compileGlob(raw: string): CompiledGlob {
   if (pattern.startsWith("./")) pattern = pattern.slice(2);
   if (pattern.endsWith("/")) pattern += "**";
   if (pattern === "") throw new Error(`Empty glob pattern: "${raw}"`);
-  const regex = new RegExp(`^(?:${expandBraces(pattern).map(translate).join("|")})$`);
+  const regex = new RegExp(`^(?:${expandBraces(pattern).map(translate).join("|")})$`, "s");
   return { negated, regex };
 }
 
 /**
  * Builds a predicate over paths. A path matches when it hits any positive
  * pattern (or there are none) and no `!` pattern or ignore pattern.
+ *
+ * Exclusions are collected separately and applied last, so the order of
+ * patterns never changes the result.
+ *
+ * @param patterns Globs from `files` or one `files_yaml` group; `!` excludes.
+ * @param ignore Globs from `files_ignore`. Always exclusions.
+ * @throws On an empty pattern, or a `!` pattern in `ignore`, which would be a double negative.
  */
 export function createMatcher(
   patterns: readonly string[] = [],
