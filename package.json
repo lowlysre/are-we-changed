@@ -11,8 +11,8 @@
   "scripts": {
     "test": "node --test --experimental-test-coverage",
     "typecheck": "tsc",
-    "format": "prettier --write \"src/**/*.ts\" \"*.json\" \"*.yml\" \".github/**/*.yml\"",
-    "format:check": "prettier --check \"src/**/*.ts\" \"*.json\" \"*.yml\" \".github/**/*.yml\""
+    "format": "prettier --write \"{src,test}/**/*.ts\" \"*.json\" \"*.yml\" \".github/**/*.yml\"",
+    "format:check": "prettier --check \"{src,test}/**/*.ts\" \"*.json\" \"*.yml\" \".github/**/*.yml\""
   },
   "devDependencies": {
     "@types/node": "^24.19.2",

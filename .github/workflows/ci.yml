@@ -59,7 +59,8 @@ jobs:
           files_yaml: |
             src:
               - src/**
-              - '!src/**/*.test.ts'
+            test:
+              - test/**
             meta:
               - action.yml
               - .github/**

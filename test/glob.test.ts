@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { compileGlob, createMatcher, expandBraces } from "./glob.ts";
+import { compileGlob, createMatcher, expandBraces } from "../src/glob.ts";
 
 describe("glob dialect", () => {
   // [pattern, path, expected]

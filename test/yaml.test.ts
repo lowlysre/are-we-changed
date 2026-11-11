@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { parseGroups } from "./yaml.ts";
+import { parseGroups } from "../src/yaml.ts";
 
 describe("parseGroups: accepted subset", () => {
   it("parses groups, quotes and comments", () => {

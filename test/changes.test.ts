@@ -8,8 +8,8 @@ import {
   summarize,
   toDirNames,
   toOutputs,
-} from "./changes.ts";
-import type { Change } from "./changes.ts";
+} from "../src/changes.ts";
+import type { Change } from "../src/changes.ts";
 
 const everything = () => true;
 

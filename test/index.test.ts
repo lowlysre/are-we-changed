@@ -12,10 +12,10 @@ import { describe, it } from "node:test";
 import type { TestContext } from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-import { run } from "./index.ts";
-import type { EventPayload } from "./git.ts";
+import { run } from "../src/index.ts";
+import type { EventPayload } from "../src/git.ts";
 
-const MAIN = fileURLToPath(new URL("./main.ts", import.meta.url));
+const MAIN = fileURLToPath(new URL("../src/main.ts", import.meta.url));
 
 type Inputs = Record<string, string | boolean | number>;
 type Repo = ReturnType<typeof makeRepo>;
