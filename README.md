@@ -5,7 +5,7 @@
 [![CI](https://github.com/lowlysre/are-we-changed/actions/workflows/ci.yml/badge.svg)](https://github.com/lowlysre/are-we-changed/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Reports the files a push, pull request, or merge group changed, filtered by glob patterns. It covers the commonly used part of [tj-actions/changed-files](https://github.com/tj-actions/changed-files) in about 550 lines of code you can read.
+Reports the files a push, pull request, or merge group changed, filtered by glob patterns. It covers the commonly used part of [tj-actions/changed-files](https://github.com/tj-actions/changed-files).
 
 - Zero runtime dependencies: Node built-ins and `git`
 - No bundle, no build step: the TypeScript in `src/` is the code that runs
