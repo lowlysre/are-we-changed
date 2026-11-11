@@ -1,0 +1,104 @@
+name: what-changed
+description: Report the files changed between two commits. Zero dependencies, git only, no build step.
+author: lowlysre
+branding:
+  icon: git-pull-request
+  color: blue
+
+inputs:
+  files:
+    description: Newline-separated glob patterns to include. A leading `!` excludes. Defaults to every file.
+    required: false
+    default: ""
+  files_ignore:
+    description: Newline-separated glob patterns to exclude. Also applies to every `files_yaml` group.
+    required: false
+    default: ""
+  files_yaml:
+    description: Named pattern groups in a strict YAML subset (or JSON). Each group sets `<group>_<output>` outputs.
+    required: false
+    default: ""
+  dir_names:
+    description: Output unique directory names instead of file names.
+    required: false
+    default: "false"
+  dir_names_max_depth:
+    description: Limit directory names to this many leading path segments.
+    required: false
+    default: ""
+  json:
+    description: Output lists as JSON arrays.
+    required: false
+    default: "false"
+  escape_json:
+    description: Escape double quotes in JSON output.
+    required: false
+    default: "true"
+  matrix:
+    description: "Shorthand for `json: true` with `escape_json: false`, for use with `fromJSON` in a matrix."
+    required: false
+    default: "false"
+  separator:
+    description: Separator for list outputs when `json` is false.
+    required: false
+    default: " "
+  safe_output:
+    description: Backslash-escape shell metacharacters in non-JSON list outputs.
+    required: false
+    default: "true"
+  base_sha:
+    description: Commit to compare from. Defaults depend on the event; see the README.
+    required: false
+    default: ""
+  sha:
+    description: Commit to compare to. Defaults to HEAD.
+    required: false
+    default: ""
+  since_last_remote_commit:
+    description: Compare against the previously pushed commit (`github.event.before`) when it is available.
+    required: false
+    default: "false"
+  skip_same_sha:
+    description: Report no changes instead of failing when base and head are the same commit.
+    required: false
+    default: "false"
+
+outputs:
+  all_changed_files:
+    description: Added, modified and renamed files.
+  all_changed_files_count:
+    description: Number of entries in `all_changed_files`.
+  any_changed:
+    description: "`true` when `all_changed_files` is not empty."
+  all_modified_files:
+    description: Added, modified, renamed and deleted files.
+  all_modified_files_count:
+    description: Number of entries in `all_modified_files`.
+  any_modified:
+    description: "`true` when `all_modified_files` is not empty."
+  added_files:
+    description: Added files.
+  added_files_count:
+    description: Number of entries in `added_files`.
+  modified_files:
+    description: Modified files.
+  modified_files_count:
+    description: Number of entries in `modified_files`.
+  deleted_files:
+    description: Deleted files.
+  deleted_files_count:
+    description: Number of entries in `deleted_files`.
+  any_deleted:
+    description: "`true` when `deleted_files` is not empty."
+  renamed_files:
+    description: Renamed files, reported by their new path.
+  renamed_files_count:
+    description: Number of entries in `renamed_files`.
+  changed_keys:
+    description: "`files_yaml` groups with at least one changed file."
+  modified_keys:
+    description: "`files_yaml` groups with at least one changed or deleted file."
+
+runs:
+  using: node24
+  main: src/main.ts
