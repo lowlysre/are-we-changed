@@ -97,6 +97,7 @@ function parseJson(text: string): Groups {
     }
     groups.set(name, patterns as string[]);
   }
+  if (groups.size === 0) throw new Error("files_yaml: no groups found");
   return groups;
 }
 

@@ -188,6 +188,16 @@ describe("pull request events", () => {
     assert.equal(repo.outputs({}, repo.event).all_changed_files, "feature.txt");
   });
 
+  it("fails when the checkout is the base branch, as on pull_request_target", (t) => {
+    const repo = makeDivergedRepo(t);
+    assert.throws(
+      () => repo.outputs({}, repo.event),
+      /does not contain the pull request's head commit.*pull_request_target/,
+    );
+    const sha = repo.event.pull_request.head.sha;
+    assert.equal(repo.outputs({ sha }, repo.event).all_changed_files, "feature.txt");
+  });
+
   it("fails with a fetch-depth hint when the base commit is missing", (t) => {
     const repo = makeDivergedRepo(t);
     const event = {
@@ -376,6 +386,10 @@ describe("input validation", () => {
   it("rejects non-boolean and non-integer values", (t) => {
     const repo = makeMixedRepo(t);
     assert.throws(() => repo.outputs({ json: "yes" }), /Input "json" must be true or false/);
+    assert.throws(
+      () => repo.outputs({ matrix: true, escape_json: "ture" }),
+      /Input "escape_json" must be true or false/,
+    );
     assert.throws(() => repo.outputs({ dir_names_max_depth: "0" }), /must be a positive integer/);
   });
 

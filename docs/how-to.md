@@ -13,13 +13,15 @@ Each guide assumes the [quick start](../README.md#quick-start) works. Input and 
 
 `matrix: true` outputs unescaped JSON that `fromJSON` accepts. `dir_names_max_depth: 2` turns `packages/core/src/index.ts` into `packages/core`.
 
+The matrix is built from `all_modified_files`, which includes deletions: removing `packages/core/src/helper.ts` can break the package, so its tests have to run.
+
 ```yaml
 jobs:
   changes:
     runs-on: ubuntu-latest
     outputs:
-      packages: ${{ steps.changed.outputs.all_changed_files }}
-      any: ${{ steps.changed.outputs.any_changed }}
+      packages: ${{ steps.changed.outputs.all_modified_files }}
+      any: ${{ steps.changed.outputs.any_modified }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -41,12 +43,15 @@ jobs:
         package: ${{ fromJSON(needs.changes.outputs.packages) }}
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v6
       - env:
           PACKAGE: ${{ matrix.package }}
-        run: npm test --workspace "$PACKAGE"
+        run: |
+          [ -d "$PACKAGE" ] || exit 0
+          npm test --workspace "$PACKAGE"
 ```
 
-Keep the `if:` on the `test` job: an empty matrix fails the workflow.
+Keep the `if:` on the `test` job: an empty matrix fails the workflow. The `[ -d ... ]` line covers a package that was deleted outright, which is still listed but has nothing left to test.
 
 ## Detect several areas in one step
 

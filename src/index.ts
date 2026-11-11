@@ -70,6 +70,9 @@ function readInputs(env: Env): Inputs {
     throw new Error(`Input "dir_names_max_depth" must be a positive integer, got "${depth}"`);
   }
   const matrix = bool("matrix");
+  // Read before `matrix` overrides them, so a typo still fails the step.
+  const json = bool("json");
+  const escapeJson = bool("escape_json", true);
   return {
     files: lines("files"),
     filesIgnore: lines("files_ignore"),
@@ -81,8 +84,8 @@ function readInputs(env: Env): Inputs {
     sinceLastRemoteCommit: bool("since_last_remote_commit"),
     skipSameSha: bool("skip_same_sha"),
     format: {
-      json: matrix || bool("json"),
-      escapeJson: !matrix && bool("escape_json", true),
+      json: matrix || json,
+      escapeJson: !matrix && escapeJson,
       safeOutput: bool("safe_output", true),
       separator: env.INPUT_SEPARATOR || " ",
     },

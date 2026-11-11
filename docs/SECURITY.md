@@ -31,7 +31,7 @@ On a pull request, file names are chosen by the author of the pull request. Git 
 |---|---|---|
 | The step log | A name such as `##[error]x` or one with an embedded `::add-mask::` line runs as a workflow command | Echoes outputs between `::stop-commands::` and a resume token that is random per run |
 | The outputs file | A name containing the delimiter ends the value early and sets other outputs | Uses a delimiter that is random per run |
-| A list output | A name with spaces or shell metacharacters changes meaning downstream | `safe_output` backslash-escapes them in separated lists. JSON output is left exact for a parser |
+| A list output | A name with shell metacharacters changes meaning downstream | `safe_output` backslash-escapes them in separated lists. Spaces are not escaped, so a name containing one still splits into two words; use JSON output and a parser to keep names whole |
 | A glob pattern | A name built to nearly match a pattern such as `*.*.*.*` makes a backtracking matcher take minutes | Matches in time bounded by path length × pattern length |
 | Any output | A name that isn't valid UTF-8 can't be written faithfully, and two such names can collapse into one | Fails the step and says to rename the file |
 | An error message | A newline starts a second workflow command | Encodes the message as command data |

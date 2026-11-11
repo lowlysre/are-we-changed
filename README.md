@@ -54,7 +54,7 @@ Yes, if both of these hold for your [tj-actions/changed-files](https://github.co
 - Every input you set is in the supported list below
 - The checkout step has `fetch-depth: 2`, or `fetch-depth: 0` for all history (see [the fetch-depth table](docs/how-to.md#fix-is-not-available-in-this-checkout) for which one)
 
-Then the migration is the `uses:` line and nothing else. Output names match.
+Then the migration is usually the `uses:` line alone. Output names match.
 
 Supported inputs (14 of upstream's 61):
 
@@ -89,7 +89,14 @@ If it prints something, look the hit up here:
 | `path`, `diff_relative` | No equivalent. The action diffs the repository in the working directory and reports paths from its root |
 | `recover_*`, `since`, `until`, `tags_*`, `*_from_source_file`, `write_output_files`, submodule inputs, `other_*` and `only_*` outputs, old/new rename pairs | No equivalent. Stay on upstream, or compute it in a following step |
 
-A few behaviours differ even when every input is supported. The one most likely to bite: `files_yaml` patterns starting with `!` or `*` have to be quoted. [docs/migration.md](docs/migration.md) has the full list.
+A few behaviours differ even when every input is supported. The ones most likely to bite:
+
+- `files_yaml` patterns starting with `!` or `*` have to be quoted
+- `files_ignore` also filters every `files_yaml` group, where upstream applies it to the unprefixed outputs only
+- Tag pushes and `release` events compare the head with its parent, where upstream compares with the previous tag
+- `pull_request_target` with the default checkout fails, since that checkout is the base branch
+
+[docs/migration.md](docs/migration.md) has the full list.
 
 ## Documentation
 

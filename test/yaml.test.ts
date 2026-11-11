@@ -96,6 +96,7 @@ describe("parseGroups: rejections", () => {
     ["invalid JSON", '{"a": [', /invalid JSON/],
     ["JSON with non-string pattern", '{"a": [1]}', /group "a" must be a non-empty list/],
     ["JSON with empty list", '{"a": []}', /group "a" must be a non-empty list/],
+    ["empty JSON object", "{}", /no groups found/],
     ["JSON with invalid group name", '{"a b": ["x"]}', /invalid group name "a b"/],
   ];
 

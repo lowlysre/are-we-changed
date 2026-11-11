@@ -22,6 +22,9 @@ These apply even when every input you set is supported.
 | Topic | tj-actions/changed-files | are-we-changed |
 |-------|--------------------------|--------------|
 | Missing history | Fetches more, up to `fetch_missing_history_max_retries` times | Fails and names the `fetch-depth` to set |
+| `files_ignore` with `files_yaml` | Filters the unprefixed outputs only | Also filters every group, which can shrink a group's list |
+| Tag pushes and `release` events | Compares with the previous tag | Compares the head with its parent. Pass the previous tag as `base_sha` to keep the old result |
+| `pull_request_target` with the default checkout | Fetches the pull request and diffs it | Fails, since the checkout is the base branch. Check out the pull request or set `sha` |
 | Push of several commits on a shallow clone | Warns and compares the last commit with its parent | Fails; needs `fetch-depth: 0` to reach `github.event.before` |
 | `escape_json` | Escapes quotes only, so a file name with a backslash doesn't survive | Escapes quotes and backslashes |
 | Pull request checked out at its head branch | Works on a shallow clone | Needs `fetch-depth: 0` to find the merge base |

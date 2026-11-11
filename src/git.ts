@@ -143,6 +143,11 @@ export function createGit(cwd: string): Git {
  * On pull requests, `sinceLastRemoteCommit` swaps in `event.before` when that
  * commit exists locally, and the head becomes the pull request's head commit.
  *
+ * A pull request event whose checkout is not the pull request fails, unless
+ * `sha` says which commit to use. `pull_request_target` checks out the base
+ * branch by default, and diffing that would report the base branch's own
+ * changes as the pull request's.
+ *
  * Revisions come from workflow inputs and event payloads, so each is resolved
  * with `--end-of-options` and can never be read as a git flag. A root commit
  * is compared against the empty tree, which reports every file as added.
@@ -192,7 +197,16 @@ export function resolveRange(
     }
     const [, ...parents] = (tryGit("rev-list", "--parents", "-n", "1", head) ?? "").split(" ");
     if (parents.length === 2 && parents[1] === pr.head?.sha) return { base: parents[0], head };
-    return { base: mergeBase(need(pr.base?.sha, "Pull request base commit"), head), head };
+    const base = need(pr.base?.sha, "Pull request base commit");
+    if (!sha) {
+      const prHead = commit(pr.head?.sha);
+      if (!prHead || tryGit("merge-base", "--is-ancestor", prHead, head) === null) {
+        throw new Error(
+          `The checkout does not contain the pull request's head commit "${pr.head?.sha}", so HEAD is not the pull request. On pull_request_target the default checkout is the base branch. Check out the pull request's head or merge ref, or set \`sha\`.`,
+        );
+      }
+    }
+    return { base: mergeBase(base, head), head };
   }
   if (event.merge_group) {
     return { base: need(event.merge_group.base_sha, "Merge group base commit"), head };

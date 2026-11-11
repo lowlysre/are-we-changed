@@ -21,7 +21,7 @@ All inputs are optional. Booleans accept `true` or `false` in any case; anything
 | `escape_json` | `true` | Escape JSON output as the content of a JSON string: quotes and backslashes. |
 | `matrix` | `false` | Same as `json: true` with `escape_json: false`. |
 | `separator` | `" "` | Separator for list outputs when `json` is off. |
-| `safe_output` | `true` | Backslash-escape shell metacharacters in list outputs when `json` is off. |
+| `safe_output` | `true` | Backslash-escape shell metacharacters in list outputs when `json` is off. Spaces are not escaped. |
 | `base_sha` | `""` | Commit to compare from. See [Compared commits](#compared-commits). |
 | `sha` | `""` | Commit to compare to. Defaults to `HEAD`. |
 | `since_last_remote_commit` | `false` | On pull requests, compare from `github.event.before` when that commit is in the checkout. Push events always do. |
@@ -65,7 +65,7 @@ The head is `sha`, or `HEAD` when `sha` is empty. The base depends on the event:
 |-------|-------------|
 | `base_sha` is set | `base_sha`. On pull requests, its merge base with the head |
 | Pull request, merge-commit checkout | First parent of the merge commit |
-| Pull request, any other checkout | Merge base of the pull request's base and the head |
+| Pull request, any other checkout | Merge base of the pull request's base and the head. Fails when the checkout doesn't contain the pull request's head commit and `sha` isn't set, as with the default base-branch checkout on `pull_request_target` |
 | Merge group | `merge_group.base_sha` |
 | Push | `github.event.before`, the commit the branch pointed at before the push, so every pushed commit counts |
 | New branch, force push, and everything else | Parent of the head. The empty tree for a root commit |
