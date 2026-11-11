@@ -19,7 +19,7 @@ The [README](../README.md#can-i-migrate-cleanly-from-tj-actionschanged-files) ha
 
 These apply even when every input you set is supported.
 
-| Topic | tj-actions/changed-files | what-changed-files |
+| Topic | tj-actions/changed-files | are-we-changed |
 |-------|--------------------------|--------------|
 | Missing history | Fetches more, up to `fetch_missing_history_max_retries` times | Fails and names the `fetch-depth` to set |
 | Push of several commits on a shallow clone | Warns and compares the last commit with its parent | Fails; needs `fetch-depth: 0` to reach `github.event.before` |

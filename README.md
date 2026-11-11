@@ -1,8 +1,8 @@
-# what-changed-files
+# are-we-changed
 
-![what-changed-files: the files a push or pull request changed, from git alone](docs/assets/hero.png)
+![are-we-changed: the files a push or pull request changed, from git alone](docs/assets/hero.png)
 
-[![CI](https://github.com/lowlysre/what-changed-files/actions/workflows/ci.yml/badge.svg)](https://github.com/lowlysre/what-changed-files/actions/workflows/ci.yml)
+[![CI](https://github.com/lowlysre/are-we-changed/actions/workflows/ci.yml/badge.svg)](https://github.com/lowlysre/are-we-changed/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Reports the files a push, pull request, or merge group changed, filtered by glob patterns. It covers the commonly used part of [tj-actions/changed-files](https://github.com/tj-actions/changed-files) in about 550 lines of code you can read.
@@ -31,7 +31,7 @@ jobs:
         with:
           fetch-depth: 2
 
-      - uses: lowlysre/what-changed-files@<commit-sha>
+      - uses: lowlysre/are-we-changed@<commit-sha>
         id: changed
         with:
           files: src/**
@@ -68,7 +68,7 @@ Supported inputs (14 of upstream's 61):
 > [!WARNING]
 > GitHub doesn't fail a step for an input the action doesn't declare. It logs an "Unexpected input(s)" warning and carries on, so a leftover `recover_deleted_files: true` is ignored without an error. Check before switching.
 
-This command lists every use of something what-changed-files doesn't have. No output means a clean migration.
+This command lists every use of something are-we-changed doesn't have. No output means a clean migration.
 
 ```sh
 grep -rnE '^\s*(files(_ignore)?(_yaml)?_from_source_file|files_ignore_yaml|[a-z_]+_separator|include_all_old_new_renamed_files|since|until|path|quotepath|diff_relative|dir_names_(exclude_current_dir|include_files|deleted_files_include_only_deleted_dirs)|fetch_depth|skip_initial_fetch|fetch_additional_submodule_history|write_output_files|output_dir|output_renamed_files_as_deleted_and_added|recover_[a-z_]+|token|api_url|use_rest_api|fail_on_[a-z_]+|negation_patterns_first|exclude_(submodules|symlinks)|fetch_missing_history_max_retries|use_posix_path_separator|tags_(ignore_)?pattern):|outputs\.([a-z0-9_-]+_)?(any_added|only_[a-z]+|other_[a-z_]+|copied_files|type_changed_files|unmerged_files|unknown_files|all_changed_and_modified_files|all_old_new_renamed_files)' .github/workflows
@@ -101,4 +101,4 @@ A few behaviours differ even when every input is supported. The one most likely 
 
 ## Related
 
-[are-we-good](https://github.com/lowlydba/are-we-good) is a sibling action by the same author. It rolls the results of many jobs and matrix legs into one pass/fail check, which pairs well with jobs that what-changed-files lets you skip.
+[are-we-good](https://github.com/lowlydba/are-we-good) is a sibling action by the same author. It rolls the results of many jobs and matrix legs into one pass/fail check, which pairs well with jobs that are-we-changed lets you skip.

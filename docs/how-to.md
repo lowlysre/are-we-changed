@@ -24,7 +24,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 2
-      - uses: lowlysre/what-changed-files@<commit-sha>
+      - uses: lowlysre/are-we-changed@<commit-sha>
         id: changed
         with:
           files: packages/**
@@ -53,7 +53,7 @@ Keep the `if:` on the `test` job: an empty matrix fails the workflow.
 Each `files_yaml` group sets its own `<group>_<output>` outputs. `files_ignore` applies to every group.
 
 ```yaml
-- uses: lowlysre/what-changed-files@<commit-sha>
+- uses: lowlysre/are-we-changed@<commit-sha>
   id: changed
   with:
     files_yaml: |
@@ -78,7 +78,7 @@ Patterns starting with `!` or `*` have to be quoted, as in any YAML file. The [f
 - uses: actions/checkout@v6
   with:
     fetch-depth: 0
-- uses: lowlysre/what-changed-files@<commit-sha>
+- uses: lowlysre/are-we-changed@<commit-sha>
   with:
     base_sha: ${{ inputs.base }}
     sha: ${{ inputs.head }}
@@ -94,7 +94,7 @@ By default a pull request reports everything it changes. To report only what the
 - uses: actions/checkout@v6
   with:
     fetch-depth: 0
-- uses: lowlysre/what-changed-files@<commit-sha>
+- uses: lowlysre/are-we-changed@<commit-sha>
   with:
     since_last_remote_commit: true
 ```
@@ -118,7 +118,7 @@ The action never fetches. When a commit it needs is missing, it fails and tells 
 A file name is attacker-controlled input on a pull request. Pass outputs through `env:` and never write `${{ }}` inside a script. Use JSON when names can contain spaces, since the default output is space-separated.
 
 ```yaml
-- uses: lowlysre/what-changed-files@<commit-sha>
+- uses: lowlysre/are-we-changed@<commit-sha>
   id: changed
   with:
     json: true

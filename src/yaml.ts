@@ -1,5 +1,5 @@
 /**
- * what-changed-files: `files_yaml` parsing
+ * `files_yaml` parsing
  *
  * Accepts a strict YAML subset:
  *

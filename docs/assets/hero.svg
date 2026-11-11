@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 260" width="1000" height="260" role="img" aria-labelledby="title desc">
-  <title id="title">what-changed-files</title>
-  <desc id="desc">what-changed-files reports the files a push or pull request changed, from git alone. Zero dependencies, no build, no network.</desc>
+  <title id="title">are-we-changed</title>
+  <desc id="desc">are-we-changed reports the files a push or pull request changed, from git alone. Zero dependencies, no build, no network.</desc>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#10212b"/>
@@ -20,7 +20,7 @@
   </g>
 
   <g font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
-    <text x="56" y="108" font-size="52" font-weight="700" fill="#f2e3c6">what<tspan fill="#ff7a59">-</tspan>changed<tspan fill="#ff7a59">-</tspan>files</text>
+    <text x="56" y="110" font-size="60" font-weight="700" fill="#f2e3c6">are<tspan fill="#ff7a59">-</tspan>we<tspan fill="#ff7a59">-</tspan>changed</text>
     <text x="58" y="150" font-size="19" fill="#b9c7c9">The files a push or pull request changed, from git alone.</text>
 
     <g font-size="13" font-weight="600" text-anchor="middle" fill="#f2e3c6">

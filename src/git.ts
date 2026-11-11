@@ -1,5 +1,5 @@
 /**
- * what-changed-files: git access
+ * Git access
  *
  * Chooses the two commits to compare and diffs them. Never fetches: missing
  * history is an error that says how to fix the checkout. A silent fallback to

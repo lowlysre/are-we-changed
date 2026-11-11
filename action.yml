@@ -1,4 +1,4 @@
-name: what-changed-files
+name: are-we-changed
 description: Report the files changed between two commits. Zero dependencies, git only, no build step.
 author: lowlysre
 branding:

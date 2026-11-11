@@ -22,7 +22,7 @@ type Inputs = Record<string, string | boolean | number>;
 type Repo = ReturnType<typeof makeRepo>;
 
 function makeRepo(t: TestContext) {
-  const root = mkdtempSync(join(tmpdir(), "what-changed-files-"));
+  const root = mkdtempSync(join(tmpdir(), "are-we-changed-"));
   t.after(() => rmSync(root, { recursive: true, force: true }));
   const dir = join(root, "repo");
   mkdirSync(dir);

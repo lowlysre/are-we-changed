@@ -1,5 +1,5 @@
 /**
- * what-changed-files: glob matching
+ * Glob matching
  *
  * Dialect: `*`, `**`, `?`, `[...]`, `{a,b}`, `\` escapes and a leading `!`.
  * Paths are always `/`-separated and matching is case-sensitive.
