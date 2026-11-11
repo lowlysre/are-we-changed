@@ -4,24 +4,39 @@
  * Dialect: `*`, `**`, `?`, `[...]`, `{a,b}`, `\` escapes and a leading `!`.
  * Paths are always `/`-separated and matching is case-sensitive.
  *
- * Each glob compiles to one anchored regex. The dialect is hand-rolled so the
- * action has no dependency and behaves the same on every Node version;
- * `test/glob.test.ts` holds the table that defines it.
+ * Each glob compiles to a list of tokens that is matched by tracking every
+ * position the pattern could be at, one path character at a time. That costs
+ * at most path length × pattern length, whatever the file name looks like. A
+ * backtracking regex does not have that bound: file names come from the pull
+ * request, and a name built to nearly match `*.*.*.*` could stall the action.
+ *
+ * The dialect is hand-rolled so the action has no dependency and behaves the
+ * same on every Node version; `test/glob.test.ts` holds the table that defines it.
  */
 
 /** One compiled pattern. */
 export interface CompiledGlob {
-  /** True when the pattern had a leading `!`, which `regex` does not include. */
+  /** True when the pattern had a leading `!`, which `matches` does not apply. */
   readonly negated: boolean;
-  /** Matches a whole path, never a substring. */
-  readonly regex: RegExp;
+  /** Tests a whole path, never a substring. */
+  readonly matches: Matcher;
 }
 
 /** Decides whether a repository-relative, `/`-separated path is selected. */
 export type Matcher = (path: string) => boolean;
 
-/** Escapes `text` for literal use in regex source. */
-const escapeRegex = (text: string): string => text.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
+/** One step of a pattern. */
+interface Token {
+  /** Whether this token can consume `char`. */
+  readonly accepts: (char: string) => boolean;
+  /** A wildcard: consumes any number of accepted characters, including none. */
+  readonly loop?: boolean;
+  /** Set on a `**` that is followed by `/`: that `/` token may be skipped along with this one. */
+  readonly skipNext?: boolean;
+}
+
+const notSlash = (char: string): boolean => char !== "/";
+const literal = (expected: string): Token => ({ accepts: (char) => char === expected });
 
 /**
  * Finds the `]` that closes the class opening at `open`.
@@ -83,25 +98,29 @@ export function expandBraces(pattern: string): string[] {
 }
 
 /**
- * Translates one brace-free glob into unanchored regex source.
+ * Turns one brace-free glob into tokens.
  *
  * - `**` spans directories only as a whole path segment; elsewhere it is `*`.
  * - A class never matches `/`, so `a[!b]c` cannot cross a directory boundary.
  * - Inside a class, `\x` is the literal member `x`, so `[a\-c]` holds `a`, `-`
  *   and `c` while `[a-c]` is a range. An unclosed `[` is a literal.
+ *
+ * A class is tested with a one-character regex, which cannot backtrack.
+ *
+ * @throws On a class the regex engine rejects, such as the reversed range `[z-a]`.
  */
-function translate(pattern: string): string {
-  let re = "";
+function tokenize(pattern: string): Token[] {
+  const tokens: Token[] = [];
   for (let i = 0; i < pattern.length; i++) {
     const c = pattern[i];
     if (c === "\\" && i + 1 < pattern.length) {
-      re += escapeRegex(pattern[++i]);
+      tokens.push(literal(pattern[++i]));
     } else if (c === "?") {
-      re += "[^/]";
+      tokens.push({ accepts: notSlash });
     } else if (c === "[") {
       const end = classEnd(pattern, i);
       if (end === -1) {
-        re += "\\[";
+        tokens.push(literal("["));
         continue;
       }
       const negated = pattern[i + 1] === "!" || pattern[i + 1] === "^";
@@ -110,10 +129,16 @@ function translate(pattern: string): string {
         const escaped = pattern[k] === "\\";
         if (escaped) k++;
         const member = pattern[k];
-        const literal = escaped || "[]^".includes(member);
-        body += literal && /\W/.test(member) ? `\\${member}` : member;
+        const plain = escaped || "[]^".includes(member);
+        body += plain && /\W/.test(member) ? `\\${member}` : member;
       }
-      re += `(?!/)[${negated ? "^" : ""}${body}]`;
+      let members: RegExp;
+      try {
+        members = new RegExp(`^[${negated ? "^" : ""}${body}]$`, "s");
+      } catch {
+        throw new Error(`Invalid character class "${pattern.slice(i, end + 1)}" in glob pattern`);
+      }
+      tokens.push({ accepts: (char) => char !== "/" && members.test(char) });
       i = end;
     } else if (c === "*") {
       let j = i;
@@ -121,29 +146,51 @@ function translate(pattern: string): string {
       const wholeSegment =
         (i === 0 || pattern[i - 1] === "/") && (j === pattern.length - 1 || pattern[j + 1] === "/");
       if (j === i || !wholeSegment) {
-        re += "[^/]*";
+        tokens.push({ accepts: notSlash, loop: true });
       } else if (j === pattern.length - 1) {
-        re += ".*";
+        tokens.push({ accepts: () => true, loop: true });
       } else {
-        re += "(?:.*/)?";
+        tokens.push({ accepts: () => true, loop: true, skipNext: true }, literal("/"));
         j++;
       }
       i = j;
     } else {
-      re += escapeRegex(c);
+      tokens.push(literal(c));
     }
   }
-  return re;
+  return tokens;
+}
+
+/**
+ * Tests `path` against `tokens` by advancing the set of reachable token
+ * positions one character at a time. Position `tokens.length` means the whole
+ * pattern is consumed.
+ */
+function matchTokens(tokens: readonly Token[], path: string): boolean {
+  const reach = (positions: Uint8Array, at: number): void => {
+    if (positions[at]) return;
+    positions[at] = 1;
+    const token = tokens[at];
+    if (token?.loop) reach(positions, at + 1);
+    if (token?.skipNext) reach(positions, at + 2);
+  };
+  let current = new Uint8Array(tokens.length + 1);
+  reach(current, 0);
+  for (const char of path) {
+    const next = new Uint8Array(tokens.length + 1);
+    for (let at = 0; at < tokens.length; at++) {
+      if (current[at] && tokens[at].accepts(char)) reach(next, tokens[at].loop ? at : at + 1);
+    }
+    current = next;
+  }
+  return current[tokens.length] === 1;
 }
 
 /**
  * Compiles one pattern. Surrounding whitespace and a leading `./` are dropped,
  * and a trailing `/` means everything below that directory.
  *
- * The regex uses the `s` flag because git allows newlines in file names and
- * `**` has to span them.
- *
- * @throws When nothing is left of the pattern after normalization.
+ * @throws When nothing is left of the pattern after normalization, or a class is invalid.
  */
 export function compileGlob(raw: string): CompiledGlob {
   let pattern = raw.trim();
@@ -152,8 +199,8 @@ export function compileGlob(raw: string): CompiledGlob {
   if (pattern.startsWith("./")) pattern = pattern.slice(2);
   if (pattern.endsWith("/")) pattern += "**";
   if (pattern === "") throw new Error(`Empty glob pattern: "${raw}"`);
-  const regex = new RegExp(`^(?:${expandBraces(pattern).map(translate).join("|")})$`, "s");
-  return { negated, regex };
+  const alternatives = expandBraces(pattern).map(tokenize);
+  return { negated, matches: (path) => alternatives.some((tokens) => matchTokens(tokens, path)) };
 }
 
 /**
@@ -171,18 +218,18 @@ export function createMatcher(
   patterns: readonly string[] = [],
   ignore: readonly string[] = [],
 ): Matcher {
-  const include: RegExp[] = [];
-  const exclude: RegExp[] = [];
+  const include: Matcher[] = [];
+  const exclude: Matcher[] = [];
   for (const pattern of patterns) {
-    const { negated, regex } = compileGlob(pattern);
-    (negated ? exclude : include).push(regex);
+    const { negated, matches } = compileGlob(pattern);
+    (negated ? exclude : include).push(matches);
   }
   for (const pattern of ignore) {
-    const { negated, regex } = compileGlob(pattern);
+    const { negated, matches } = compileGlob(pattern);
     if (negated) throw new Error(`Negation is not supported in files_ignore: "${pattern}"`);
-    exclude.push(regex);
+    exclude.push(matches);
   }
   return (path) =>
-    (include.length === 0 || include.some((re) => re.test(path))) &&
-    !exclude.some((re) => re.test(path));
+    (include.length === 0 || include.some((matches) => matches(path))) &&
+    !exclude.some((matches) => matches(path));
 }

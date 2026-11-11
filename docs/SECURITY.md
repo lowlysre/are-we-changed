@@ -32,6 +32,7 @@ On a pull request, file names are chosen by the author of the pull request. Git 
 | The step log | A name such as `##[error]x` or one with an embedded `::add-mask::` line runs as a workflow command | Echoes outputs between `::stop-commands::` and a resume token that is random per run |
 | The outputs file | A name containing the delimiter ends the value early and sets other outputs | Uses a delimiter that is random per run |
 | A list output | A name with spaces or shell metacharacters changes meaning downstream | `safe_output` backslash-escapes them in separated lists. JSON output is left exact for a parser |
+| A glob pattern | A name built to nearly match a pattern such as `*.*.*.*` makes a backtracking matcher take minutes | Matches in time bounded by path length × pattern length |
 | An error message | A newline starts a second workflow command | Encodes the message as command data |
 
 The other inputs come from the workflow, but a workflow can pass on something it didn't write, such as a `workflow_dispatch` input:

@@ -77,6 +77,8 @@ describe("parseGroups: rejections", () => {
     ["plain float", "a:\n  - -1.5e3", /line 2: unsupported plain value/],
     ["plain hex", "a:\n  - 0x1F", /line 2: unsupported plain value/],
     ["plain date", "a:\n  - 2024-01-31", /line 2: unsupported plain value/],
+    ["numeric group name", "01:\n  - x", /line 1: YAML reads this group name as a number/],
+    ["boolean group name", "yes:\n  - x", /line 1: YAML reads this group name as a number/],
     ["deeper item (scalar continuation)", "a:\n  - x\n    - y", /line 3: list items in a group/],
     ["shallower item", "a:\n  - x\n- y", /line 3: list items in a group/],
     ["item before any group", "- x", /line 1: list item before any group/],

@@ -131,6 +131,7 @@ The parser accepts that shape and nothing else. Each of these fails with an erro
 - Escape sequences inside double quotes, and `''` inside single quotes
 - Tabs
 - Duplicate groups, and groups with no patterns
+- Group names YAML reads as a number, boolean, or null, such as `01` or `yes`. The JSON form accepts them
 
 Input starting with `{` is parsed as JSON instead:
 

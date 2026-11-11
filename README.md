@@ -36,14 +36,14 @@ jobs:
         with:
           files: src/**
 
-      - if: steps.changed.outputs.any_changed == 'true'
+      - if: steps.changed.outputs.any_modified == 'true'
         run: npm test
 ```
 
 > [!IMPORTANT]
 > The action never fetches, so the checkout step has to bring the history. `fetch-depth: 2` covers a push of one commit and the default pull request checkout. `fetch-depth: 0` (all history) covers everything, and is required for a push of several commits, merge groups, `base_sha`, `since_last_remote_commit`, and a pull request checked out at its head branch.
 
-`any_changed` is `'true'` or `'false'`. `all_changed_files` holds the matching paths, space-separated.
+`any_modified` is `'true'` when a matching file was added, modified, renamed, or deleted. A deleted source file can break what's left, so it's the right gate for tests. `any_changed` leaves deletions out, and `all_changed_files` holds the matching paths that still exist, space-separated.
 
 There are no release tags yet, so pin to a full commit SHA.
 

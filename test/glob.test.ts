@@ -88,14 +88,25 @@ describe("glob dialect", () => {
 
   for (const [pattern, path, expected] of table) {
     it(`${pattern} ${expected ? "matches" : "rejects"} ${JSON.stringify(path)}`, () => {
-      assert.equal(compileGlob(pattern).regex.test(path), expected);
+      assert.equal(compileGlob(pattern).matches(path), expected);
     });
   }
 
   it("flags a leading ! as negation", () => {
-    const { negated, regex } = compileGlob("!docs/**");
+    const { negated, matches } = compileGlob("!docs/**");
     assert.equal(negated, true);
-    assert.equal(regex.test("docs/a.md"), true);
+    assert.equal(matches("docs/a.md"), true);
+  });
+
+  it("stays fast on a file name built to nearly match", () => {
+    const { matches } = compileGlob("**/*.*.*.*.*.*.*.json");
+    const started = performance.now();
+    assert.equal(matches(`src/${".".repeat(4000)}.jsonx`), false);
+    assert.ok(performance.now() - started < 1000);
+  });
+
+  it("rejects an invalid character class", () => {
+    assert.throws(() => compileGlob("[z-a].txt"), /Invalid character class "\[z-a\]"/);
   });
 
   it("rejects an empty pattern", () => {

@@ -133,6 +133,9 @@ export function parseGroups(text: string): Groups {
     const key = /^([^\s:#]+):$/.exec(line.replace(/\s+#.*$/, ""));
     if (!key) fail("expected `group:` at column 0 or `- pattern`");
     if (!GROUP_NAME.test(key[1])) fail("group names may only contain letters, digits, `_` and `-`");
+    if (IMPLICIT_TYPE.test(key[1])) {
+      fail("YAML reads this group name as a number, boolean or null; use the JSON form for it");
+    }
     if (groups.has(key[1])) fail("duplicate group");
     current = [];
     indent = undefined;

@@ -64,7 +64,7 @@ Each `files_yaml` group sets its own `<group>_<output>` outputs. `files_ignore` 
         - pom.xml
     files_ignore: "**/generated/**"
 
-- if: steps.changed.outputs.src_any_changed == 'true'
+- if: steps.changed.outputs.src_any_modified == 'true'
   run: mvn test
 - if: contains(steps.changed.outputs.changed_keys, 'pom')
   run: mvn dependency:tree
