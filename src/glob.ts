@@ -24,8 +24,28 @@ export type Matcher = (path: string) => boolean;
 const escapeRegex = (text: string): string => text.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
 
 /**
+ * Finds the `]` that closes the class opening at `open`.
+ *
+ * A `]` directly after the opening (or after the negation mark) is a member,
+ * as in `[]a]`, and `\x` is always a member.
+ *
+ * @returns The index of the closing `]`, or -1 when the class is unclosed.
+ */
+function classEnd(pattern: string, open: number): number {
+  let i = open + 1;
+  if (pattern[i] === "!" || pattern[i] === "^") i++;
+  if (pattern[i] === "]") i++;
+  for (; i < pattern.length; i++) {
+    if (pattern[i] === "\\") i++;
+    else if (pattern[i] === "]") return i;
+  }
+  return -1;
+}
+
+/**
  * Expands `{a,b}` alternatives bash-style, recursing for nested and repeated groups.
  * Braces without a top-level comma stay literal, and `\{` never opens a group.
+ * Class contents are skipped, so `[{,}]` keeps `{` and `,` as members.
  *
  * @returns Every brace-free pattern the input stands for, at least one.
  */
@@ -35,6 +55,7 @@ export function expandBraces(pattern: string): string[] {
       i++;
       continue;
     }
+    if (pattern[i] === "[") i = Math.max(i, classEnd(pattern, i));
     if (pattern[i] !== "{") continue;
     const parts: string[] = [];
     let depth = 0;
@@ -43,6 +64,8 @@ export function expandBraces(pattern: string): string[] {
       const c = pattern[j];
       if (c === "\\") {
         j++;
+      } else if (c === "[") {
+        j = Math.max(j, classEnd(pattern, j));
       } else if (c === "{") {
         depth++;
       } else if (c === "," && depth === 0) {
@@ -64,8 +87,8 @@ export function expandBraces(pattern: string): string[] {
  *
  * - `**` spans directories only as a whole path segment; elsewhere it is `*`.
  * - A class never matches `/`, so `a[!b]c` cannot cross a directory boundary.
- * - The closing `]` is searched from the second member on, which lets `]` be
- *   the first member as in `[]a]`. An unclosed `[` is a literal.
+ * - Inside a class, `\x` is the literal member `x`, so `[a\-c]` holds `a`, `-`
+ *   and `c` while `[a-c]` is a range. An unclosed `[` is a literal.
  */
 function translate(pattern: string): string {
   let re = "";
@@ -76,14 +99,20 @@ function translate(pattern: string): string {
     } else if (c === "?") {
       re += "[^/]";
     } else if (c === "[") {
-      const negated = pattern[i + 1] === "!" || pattern[i + 1] === "^";
-      const start = i + (negated ? 2 : 1);
-      const end = pattern.indexOf("]", start + 1);
+      const end = classEnd(pattern, i);
       if (end === -1) {
         re += "\\[";
         continue;
       }
-      const body = pattern.slice(start, end).replace(/[\\[\]^]/g, "\\$&");
+      const negated = pattern[i + 1] === "!" || pattern[i + 1] === "^";
+      let body = "";
+      for (let k = i + (negated ? 2 : 1); k < end; k++) {
+        const escaped = pattern[k] === "\\";
+        if (escaped) k++;
+        const member = pattern[k];
+        const literal = escaped || "[]^".includes(member);
+        body += literal && /\W/.test(member) ? `\\${member}` : member;
+      }
       re += `(?!/)[${negated ? "^" : ""}${body}]`;
       i = end;
     } else if (c === "*") {

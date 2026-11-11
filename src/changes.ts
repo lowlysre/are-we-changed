@@ -43,7 +43,11 @@ export interface DirNameOptions {
 export interface Format {
   /** Emit a JSON array instead of a separated string. */
   readonly json?: boolean;
-  /** Backslash-escape the quotes in JSON, for outputs pasted into another JSON string. */
+  /**
+   * Escape the JSON as the content of a JSON string, for outputs pasted between
+   * quotes in another JSON document. Backslashes are escaped along with quotes,
+   * so the original array survives both rounds of parsing.
+   */
   readonly escapeJson?: boolean;
   /** Escape shell metacharacters. Applies to separated strings only. */
   readonly safeOutput?: boolean;
@@ -135,7 +139,7 @@ export function formatList(
 ): string {
   if (json) {
     const text = JSON.stringify(items);
-    return escapeJson ? text.replace(/"/g, '\\"') : text;
+    return escapeJson ? JSON.stringify(text).slice(1, -1) : text;
   }
   return (safeOutput ? items.map(escapeUnsafe) : items).join(separator);
 }

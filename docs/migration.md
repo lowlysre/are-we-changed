@@ -22,6 +22,8 @@ These apply even when every input you set is supported.
 | Topic | tj-actions/changed-files | what-changed |
 |-------|--------------------------|--------------|
 | Missing history | Fetches more, up to `fetch_missing_history_max_retries` times | Fails and names the `fetch-depth` to set |
+| Push of several commits on a shallow clone | Warns and compares the last commit with its parent | Fails; needs `fetch-depth: 0` to reach `github.event.before` |
+| `escape_json` | Escapes quotes only, so a file name with a backslash doesn't survive | Escapes quotes and backslashes |
 | Pull request checked out at its head branch | Works on a shallow clone | Needs `fetch-depth: 0` to find the merge base |
 | `files_yaml` syntax | Full YAML | A [strict subset](reference.md#files_yaml-format). Unquoted `!` and `*` patterns are errors |
 | Pattern order | Matters, see `negation_patterns_first` | Doesn't matter. Exclusions always win |

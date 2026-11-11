@@ -40,7 +40,7 @@ jobs:
 ```
 
 > [!IMPORTANT]
-> The action never fetches, so the checkout step has to bring the history. `fetch-depth: 2` covers push events and the default pull request checkout. `fetch-depth: 0` (all history) covers everything, and is required for merge groups, `base_sha`, `since_last_remote_commit`, and a pull request checked out at its head branch.
+> The action never fetches, so the checkout step has to bring the history. `fetch-depth: 2` covers a push of one commit and the default pull request checkout. `fetch-depth: 0` (all history) covers everything, and is required for a push of several commits, merge groups, `base_sha`, `since_last_remote_commit`, and a pull request checked out at its head branch.
 
 `any_changed` is `'true'` or `'false'`. `all_changed_files` holds the matching paths, space-separated.
 

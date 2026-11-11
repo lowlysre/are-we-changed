@@ -31,7 +31,7 @@ inputs:
     required: false
     default: "false"
   escape_json:
-    description: Escape double quotes in JSON output.
+    description: Escape JSON output as the content of a JSON string (quotes and backslashes).
     required: false
     default: "true"
   matrix:
@@ -55,7 +55,7 @@ inputs:
     required: false
     default: ""
   since_last_remote_commit:
-    description: Compare against the previously pushed commit (`github.event.before`) when it is available.
+    description: On pull requests, compare from the previously pushed commit (`github.event.before`) when it is available.
     required: false
     default: "false"
   skip_same_sha:

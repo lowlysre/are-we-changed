@@ -98,9 +98,10 @@ function readInputs(env: Env): Inputs {
  * filtered by its own patterns plus `files_ignore`.
  *
  * Two names can spell the same output: group `all` makes `all_modified_files`,
- * and groups `src` and `src_all` both make `src_all_modified_files`. A
- * collision fails the run, because overwriting would publish one list under
- * another's name.
+ * and groups `src` and `src_all` both make `src_all_modified_files`. The
+ * runner also treats output names case-insensitively, so `src` and `SRC`
+ * collide. A collision fails the run, because overwriting would publish one
+ * list under another's name.
  *
  * @throws On invalid inputs, missing history, identical commits without
  *   `skip_same_sha`, or colliding output names. Messages are written for the
@@ -130,13 +131,14 @@ export function run(env: Env = process.env, cwd: string = process.cwd()): Result
   const owners = new Map<string, string>();
   const publish = (entries: Record<string, string>, owner: string): void => {
     for (const [name, value] of Object.entries(entries)) {
-      const taken = owners.get(name);
+      const key = name.toLowerCase();
+      const taken = owners.get(key);
       if (taken) {
         throw new Error(
           `files_yaml: ${owner} and ${taken} both set the output "${name}". Rename one of the groups.`,
         );
       }
-      owners.set(name, owner);
+      owners.set(key, owner);
       outputs[name] = value;
     }
   };

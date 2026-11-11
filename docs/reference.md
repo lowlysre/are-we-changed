@@ -18,13 +18,13 @@ All inputs are optional. Booleans accept `true` or `false` in any case; anything
 | `dir_names` | `false` | Output unique directory names instead of file names. Root-level files become `.`. |
 | `dir_names_max_depth` | `""` | Keep this many leading path segments of each directory name. Positive integer. |
 | `json` | `false` | Output lists as JSON arrays. |
-| `escape_json` | `true` | Escape double quotes in JSON output. |
+| `escape_json` | `true` | Escape JSON output as the content of a JSON string: quotes and backslashes. |
 | `matrix` | `false` | Same as `json: true` with `escape_json: false`. |
 | `separator` | `" "` | Separator for list outputs when `json` is off. |
 | `safe_output` | `true` | Backslash-escape shell metacharacters in list outputs when `json` is off. |
 | `base_sha` | `""` | Commit to compare from. See [Compared commits](#compared-commits). |
 | `sha` | `""` | Commit to compare to. Defaults to `HEAD`. |
-| `since_last_remote_commit` | `false` | Compare from `github.event.before` when that commit is in the checkout. |
+| `since_last_remote_commit` | `false` | On pull requests, compare from `github.event.before` when that commit is in the checkout. Push events always do. |
 | `skip_same_sha` | `false` | Report no changes instead of failing when both commits are the same. |
 
 `safe_output` escapes everything outside printable ASCII, plus these characters:
@@ -67,9 +67,12 @@ The head is `sha`, or `HEAD` when `sha` is empty. The base depends on the event:
 | Pull request, merge-commit checkout | First parent of the merge commit |
 | Pull request, any other checkout | Merge base of the pull request's base and the head |
 | Merge group | `merge_group.base_sha` |
-| Push and everything else | Parent of the head. The empty tree for a root commit |
+| Push | `github.event.before`, the commit the branch pointed at before the push, so every pushed commit counts |
+| New branch, force push, and everything else | Parent of the head. The empty tree for a root commit |
 
-`since_last_remote_commit` replaces the base with `github.event.before` when that commit is in the checkout. On a pull request it also moves the head to the pull request's head commit, so base-branch changes pulled in by the merge commit stay out of the result.
+A push whose `github.event.before` isn't in the checkout fails, unless it's a new branch or a force push. Falling back to the parent would drop the earlier commits of that push.
+
+On pull requests, `since_last_remote_commit` replaces the base with `github.event.before` when that commit is in the checkout. It also moves the head to the pull request's head commit, so base-branch changes pulled in by the merge commit stay out of the result.
 
 Renames are detected with git's default similarity threshold. Submodule changes are ignored.
 
@@ -88,7 +91,7 @@ A pattern has to match the whole path. Paths use `/` on every platform. Matching
 | `*` | Any run of characters except `/`. Matches a leading dot. |
 | `**` | As a whole path segment, any number of directories: `**/*.md`, `src/**`, `a/**/b`. Anywhere else it behaves like `*`. |
 | `?` | One character except `/`. |
-| `[abc]` | One of the listed characters or ranges (`[a-z]`). `[!abc]` and `[^abc]` negate. Never matches `/`. |
+| `[abc]` | One of the listed characters or ranges (`[a-z]`). `[!abc]` and `[^abc]` negate. `\x` inside is the literal `x`, and `{`, `,` are plain members. Never matches `/`. |
 | `{a,b}` | Either alternative. Nests. Braces without a comma are literal. |
 | `\x` | The literal character `x`. |
 | `!pattern` | Excludes paths matching `pattern`. Exclusions win over inclusions whatever the order. |

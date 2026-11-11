@@ -107,7 +107,8 @@ The action never fetches. When a commit it needs is missing, it fails and tells 
 
 | Situation | `fetch-depth` |
 |-----------|---------------|
-| Push events | `2` |
+| Push of one commit, or of a merge commit | `2` |
+| Push of several commits (a rebase merge, a local branch pushed at once) | `0` (all history) |
 | Pull requests with the default checkout (the merge commit) | `2` |
 | Pull requests with `ref:` set to the head branch | `0` (all history) |
 | Merge groups, `base_sha`, `since_last_remote_commit` | `0` (all history) |

@@ -125,7 +125,7 @@ describe("push events", () => {
     assert.throws(() => run({}, shallow), /shallow checkout.*fetch-depth: 0/);
   });
 
-  it("uses event.before with since_last_remote_commit", (t) => {
+  it("covers every commit of a push by comparing from event.before", (t) => {
     const repo = makeRepo(t);
     repo.write("a.txt");
     const before = repo.commit("one");
@@ -133,25 +133,29 @@ describe("push events", () => {
     repo.commit("two");
     repo.write("c.txt");
     repo.commit("three");
-    assert.equal(repo.outputs({}, { before }).added_files, "c.txt");
-    assert.equal(
-      repo.outputs({ since_last_remote_commit: true }, { before }).added_files,
-      "b.txt c.txt",
-    );
+    assert.equal(repo.outputs({}, { before }).added_files, "b.txt c.txt");
   });
 
-  it("falls back to the parent when event.before is all zeros or unknown", (t) => {
+  it("falls back to the parent for a new branch or a force push", (t) => {
     const repo = makeRepo(t);
     repo.write("a.txt");
     repo.commit("one");
     repo.write("b.txt");
     repo.commit("two");
-    for (const before of ["0".repeat(40), "f".repeat(40)]) {
-      assert.equal(
-        repo.outputs({ since_last_remote_commit: true }, { before }).added_files,
-        "b.txt",
-      );
-    }
+    assert.equal(repo.outputs({}, { before: "0".repeat(40) }).added_files, "b.txt");
+    assert.equal(repo.outputs({}, { before: "f".repeat(40), forced: true }).added_files, "b.txt");
+  });
+
+  it("fails with a fetch-depth hint when event.before is missing", (t) => {
+    const repo = makeRepo(t);
+    repo.write("a.txt");
+    repo.commit("one");
+    repo.write("b.txt");
+    repo.commit("two");
+    assert.throws(
+      () => repo.outputs({}, { before: "f".repeat(40) }),
+      /Previously pushed commit.*fetch-depth: 0/,
+    );
   });
 });
 
@@ -204,6 +208,14 @@ describe("pull request events", () => {
     repo.git("merge", "--quiet", "--no-ff", "-m", "merge", "feature");
     const out = repo.outputs({ since_last_remote_commit: true }, event);
     assert.equal(out.all_changed_files, "second-push.txt");
+    const missingHead = {
+      ...event,
+      pull_request: { ...event.pull_request, head: { sha: "e".repeat(40) } },
+    };
+    assert.throws(
+      () => repo.outputs({ since_last_remote_commit: true }, missingHead),
+      /Pull request head commit.*fetch-depth: 0/,
+    );
   });
 });
 
@@ -316,6 +328,10 @@ describe("reference usages", () => {
     assert.throws(
       () => repo.outputs({ files_yaml: "src:\n  - a\nsrc_all:\n  - b" }),
       /group "src_all" and group "src" both set the output "src_all_modified_files"/,
+    );
+    assert.throws(
+      () => repo.outputs({ files_yaml: "src:\n  - a\nSRC:\n  - b" }),
+      /group "SRC" and group "src" both set the output "SRC_added_files"/,
     );
   });
 });

@@ -22,13 +22,15 @@ export interface RangeOptions {
   readonly baseSha?: string;
   /** The `sha` input. Defaults to `HEAD`. */
   readonly sha?: string;
-  /** The `since_last_remote_commit` input. */
+  /** The `since_last_remote_commit` input. Only changes pull request events. */
   readonly sinceLastRemoteCommit?: boolean;
 }
 
 /** The parts of a webhook payload this action reads. */
 export interface EventPayload {
   readonly before?: string;
+  /** True on a force push, where `before` is not an ancestor of the head. */
+  readonly forced?: boolean;
   readonly pull_request?: {
     readonly base?: { readonly sha?: string };
     readonly head?: { readonly sha?: string };
@@ -44,7 +46,7 @@ export interface Range {
 
 /** Appended to every missing-history error so the failure carries its fix. */
 const HISTORY_HINT =
-  "Set `fetch-depth: 0` on actions/checkout (`fetch-depth: 2` is enough for push events and pull request merge commits).";
+  "Set `fetch-depth: 0` on actions/checkout (`fetch-depth: 2` is enough for a push of one commit and for pull request merge commits).";
 
 /**
  * Binds git to the repository at `cwd`.
@@ -86,11 +88,15 @@ export function createGit(cwd: string): Git {
  * | pull request, merge checkout  | first parent of the merge commit              |
  * | pull request, other checkout  | merge base of the PR base and head            |
  * | merge group                   | `merge_group.base_sha`                        |
+ * | push                          | `event.before`, so every pushed commit counts |
  * | everything else               | parent of head (empty tree for a root commit) |
  *
- * `sinceLastRemoteCommit` swaps in `event.before` when that commit exists locally.
- * A force push or a new branch leaves `before` unknown or all zeros, and the
- * table above applies instead.
+ * A new branch has an all-zero `before` and a force push an unreachable one;
+ * both fall through to the parent of head. Any other push whose `before` is
+ * missing fails, since the parent alone would drop the earlier commits.
+ *
+ * On pull requests, `sinceLastRemoteCommit` swaps in `event.before` when that
+ * commit exists locally, and the head becomes the pull request's head commit.
  *
  * Revisions come from workflow inputs and event payloads, so each is resolved
  * with `--end-of-options` and can never be read as a git flag. A root commit
@@ -126,15 +132,18 @@ export function resolveRange(
 
   const head = need(sha || "HEAD", "Head commit");
   const pr = event.pull_request;
-  const pushedBefore = sinceLastRemoteCommit ? commit(event.before) : null;
 
   if (baseSha) {
     const base = need(baseSha, "base_sha");
     return { base: pr ? mergeBase(base, head) : base, head };
   }
   if (pr) {
+    const pushedBefore = sinceLastRemoteCommit ? commit(event.before) : null;
     if (pushedBefore) {
-      return { base: pushedBefore, head: sha ? head : (commit(pr.head?.sha) ?? head) };
+      return {
+        base: pushedBefore,
+        head: sha ? head : need(pr.head?.sha, "Pull request head commit"),
+      };
     }
     const [, ...parents] = (tryGit("rev-list", "--parents", "-n", "1", head) ?? "").split(" ");
     if (parents.length === 2 && parents[1] === pr.head?.sha) return { base: parents[0], head };
@@ -143,7 +152,9 @@ export function resolveRange(
   if (event.merge_group) {
     return { base: need(event.merge_group.base_sha, "Merge group base commit"), head };
   }
-  if (pushedBefore) return { base: pushedBefore, head };
+  if (event.before && !/^0+$/.test(event.before) && !event.forced) {
+    return { base: need(event.before, "Previously pushed commit"), head };
+  }
 
   const parent = commit(`${head}^`);
   if (parent) return { base: parent, head };
