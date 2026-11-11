@@ -53,7 +53,7 @@ jobs:
 
       - name: Run the action
         id: changed
-        uses: ./
+        uses: $/
         with:
           files_ignore: "**/*.md"
           files_yaml: |
