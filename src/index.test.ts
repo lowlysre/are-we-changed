@@ -325,7 +325,11 @@ describe("command line entry point", () => {
   const invoke = (repo: Repo, inputs: Inputs) => {
     const outputFile = join(repo.root, "output.txt");
     writeFileSync(outputFile, "");
-    const env = { ...process.env, ...repo.env(inputs), GITHUB_OUTPUT: outputFile };
+    // Drop the runner's own GITHUB_* and INPUT_* variables so CI does not leak into the child.
+    const inherited = Object.fromEntries(
+      Object.entries(process.env).filter(([name]) => !/^(GITHUB|INPUT)_/.test(name)),
+    );
+    const env = { ...inherited, ...repo.env(inputs), GITHUB_OUTPUT: outputFile };
     const result = spawnSync(process.execPath, [MAIN], { cwd: repo.dir, env, encoding: "utf8" });
     return { ...result, written: readFileSync(outputFile, "utf8") };
   };
