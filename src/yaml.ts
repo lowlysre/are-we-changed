@@ -27,8 +27,11 @@ type Fail = (why: string) => never;
 /** Restricted to characters that are valid in an output name. */
 const GROUP_NAME = /^[A-Za-z0-9_-]+$/;
 
-/** Plain scalars that YAML reads as syntax: tags, anchors, aliases, flow, block scalars, maps. */
-const INDICATOR = /^[!&*|>{}[\]%@`"'#,]|^[?:-](\s|$)|:\s|:$/;
+/**
+ * Plain scalars that YAML reads as syntax: tags, anchors, aliases, flow, block
+ * scalars, maps. Quotes are not listed because quoted values never get here.
+ */
+const INDICATOR = /^[!&*|>{}[\]%@`#,]|^[?:-](\s|$)|:\s|:$/;
 
 /**
  * Plain scalars that YAML resolves to a null, boolean, number or timestamp
@@ -122,8 +125,8 @@ export function parseGroups(text: string): Groups {
     };
     const line = raw.trimEnd();
     if (line.trim() === "" || line.trim().startsWith("#")) continue;
-    if (line.includes("\t")) fail("tabs are not supported");
-    // JavaScript's \s is wider than YAML's: a no-break space before `#` would start a comment here only.
+    // Tabs included. JavaScript's \s is also wider than YAML's: a no-break space
+    // before `#` would start a comment here and nowhere else.
     if (/[^\S ]/.test(line)) fail("whitespace other than a space is not supported");
     const item = /^( *)-\s+(.*)$/.exec(line);
     if (item) {

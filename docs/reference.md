@@ -131,7 +131,7 @@ The parser accepts that shape and nothing else. Each of these fails with an erro
 - Block scalars: `|`, `>`
 - Nested maps and `key: value` pairs
 - Escape sequences inside double quotes, and `''` inside single quotes
-- Tabs
+- Tabs, and any other whitespace that isn't a plain space
 - Duplicate groups, and groups with no patterns
 - Group names YAML reads as a number, boolean, or null, such as `01` or `yes`. The JSON form accepts them
 

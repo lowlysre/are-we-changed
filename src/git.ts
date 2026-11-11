@@ -60,11 +60,8 @@ const HISTORY_HINT =
  *
  * @throws When no git executable is on `PATH`.
  */
-export function findGit(
-  pathVariable: string = process.env.PATH ?? "",
-  platform: string = process.platform,
-): string {
-  const name = platform === "win32" ? "git.exe" : "git";
+export function findGit(pathVariable: string = process.env.PATH ?? ""): string {
+  const name = process.platform === "win32" ? "git.exe" : "git";
   for (const directory of pathVariable.split(delimiter)) {
     if (!isAbsolute(directory)) continue;
     const candidate = join(directory, name);
@@ -98,7 +95,7 @@ export function createGit(cwd: string): Git {
     "-c",
     "core.quotepath=false",
   ];
-  const env = { ...process.env, GIT_NO_LAZY_FETCH: "1", GIT_TERMINAL_PROMPT: "0" };
+  const env = { ...process.env, GIT_NO_LAZY_FETCH: "1" };
   const git = (...args: string[]): string => {
     const output = execFileSync(executable, [...prefix, ...args], {
       cwd,

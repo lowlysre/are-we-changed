@@ -9,11 +9,10 @@
 import { readFileSync } from "node:fs";
 
 import { buildOutputs, parseNameStatus } from "./changes.ts";
-import type { Change, Format } from "./changes.ts";
+import type { Change, Selection } from "./changes.ts";
 import { createGit, diffNameStatus, resolveRange } from "./git.ts";
-import type { EventPayload } from "./git.ts";
+import type { EventPayload, RangeOptions } from "./git.ts";
 import { parseGroups } from "./yaml.ts";
-import type { Groups } from "./yaml.ts";
 
 /** The runner's environment: `INPUT_*` variables plus `GITHUB_EVENT_PATH`. */
 export type Env = Readonly<Record<string, string | undefined>>;
@@ -26,19 +25,8 @@ export interface Result {
   readonly messages: string[];
 }
 
-/** The action's inputs after validation, in the shapes the other modules take. */
-interface Inputs {
-  readonly files: string[];
-  readonly filesIgnore: string[];
-  readonly groups: Groups;
-  readonly dirNames: boolean;
-  readonly maxDepth: number | undefined;
-  readonly baseSha: string;
-  readonly sha: string;
-  readonly sinceLastRemoteCommit: boolean;
-  readonly skipSameSha: boolean;
-  readonly format: Format;
-}
+/** The action's inputs after validation: what to report, which commits to compare. */
+type Inputs = Selection & RangeOptions & { readonly skipSameSha: boolean };
 
 /**
  * Reads and validates every input.
